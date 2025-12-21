@@ -67,6 +67,10 @@ The application runs with `npm run dev` which starts:
 - DATABASE_URL - PostgreSQL connection string (auto-configured)
 - SESSION_SECRET - Session encryption key
 
+## Location & Contact
+- **Location**: Sh.Maaungoodhoo, Maldives
+- **Contact**: 9994026
+
 ## Bank Account Details
 - **Bank of Maldives**: MVR 7777777776666667 / USD 7777777776666666
 - **Maldives Islamic Bank**: MVR 99999999888999889 / USD 999988887777888888

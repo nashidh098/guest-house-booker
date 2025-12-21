@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -50,7 +50,8 @@ export default function Home() {
   const [isRoomUnavailable, setIsRoomUnavailable] = useState(false);
   const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null);
 
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4000, stopOnInteraction: false })]);
+  const autoplayPlugin = useMemo(() => Autoplay({ delay: 4000, stopOnInteraction: false }), []);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [autoplayPlugin]);
 
   const scrollPrev = () => emblaApi?.scrollPrev();
   const scrollNext = () => emblaApi?.scrollNext();
@@ -255,7 +256,7 @@ export default function Home() {
                       <img
                         src={image.src}
                         alt={image.alt}
-                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                        className="w-full h-full object-cover transition-opacity duration-300 hover:opacity-90"
                         data-testid={`img-gallery-${index}`}
                       />
                     </div>
@@ -672,12 +673,12 @@ export default function Home() {
               <Phone className="h-4 w-4" />
               <span data-testid="text-contact">9994026</span>
             </div>
-            <a href="tel:9994026">
-              <Button size="sm" data-testid="button-call">
+            <Button size="sm" asChild data-testid="button-call">
+              <a href="tel:9994026">
                 <Phone className="mr-2 h-4 w-4" />
                 Call Us
-              </Button>
-            </a>
+              </a>
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-4">All rights reserved 2024</p>
         </div>
