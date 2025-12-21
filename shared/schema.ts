@@ -41,7 +41,7 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
 }).extend({
   fullName: z.string().min(2, "Full name is required"),
   idNumber: z.string().min(3, "ID/Passport number is required"),
-  roomNumber: z.number().min(1).max(10),
+  roomNumber: z.number().min(1).max(4),
   checkInDate: z.string().min(1, "Check-in date is required"),
   checkOutDate: z.string().min(1, "Check-out date is required"),
 });
@@ -58,9 +58,7 @@ export interface Room {
 export const ROOMS: Room[] = [
   { number: 1, name: "Room 1" },
   { number: 2, name: "Room 2" },
-  { number: 3, name: "Room 3" },
-  { number: 4, name: "Room 4" },
-  { number: 5, name: "Room 5" },
+  // Rooms 3 and 4 - coming soon (not completed yet)
 ];
 
 // Bank account details

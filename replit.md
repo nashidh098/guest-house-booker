@@ -51,7 +51,7 @@ A complete guest house room booking web application for MOONLIGHT INN in Maldive
 ### Bookings Table
 - id (UUID, primary key)
 - fullName, idNumber (guest details)
-- roomNumber (1-5)
+- roomNumber (1-4, currently only 1-2 available)
 - checkInDate, checkOutDate
 - totalNights, totalMVR, totalUSD
 - paymentSlip (filename)
