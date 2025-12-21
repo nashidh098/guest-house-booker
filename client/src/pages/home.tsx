@@ -302,7 +302,7 @@ export default function Home() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Guest Details */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <h3 className="text-lg font-semibold flex items-center gap-2 border-0">
                     <User className="h-5 w-5 text-primary" />
                     Guest Details
                   </h3>
@@ -365,7 +365,7 @@ export default function Home() {
 
                 {/* Room Selection */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <h3 className="text-lg font-semibold flex items-center gap-2 border-0">
                     <Building2 className="h-5 w-5 text-primary" />
                     Room Selection
                   </h3>
@@ -499,7 +499,7 @@ export default function Home() {
 
                 {/* Bank Details */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <h3 className="text-lg font-semibold flex items-center gap-2 border-0">
                     <CreditCard className="h-5 w-5 text-primary" />
                     Bank Transfer Details
                   </h3>
@@ -565,7 +565,7 @@ export default function Home() {
 
                 {/* Payment Upload */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <h3 className="text-lg font-semibold flex items-center gap-2 border-0">
                     <Upload className="h-5 w-5 text-primary" />
                     Upload Payment Slip
                   </h3>
