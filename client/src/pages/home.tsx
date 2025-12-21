@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -117,6 +117,18 @@ export default function Home() {
       setAvailabilityMessage(null);
     }
   };
+
+  // Auto-check availability when room and dates are selected
+  useEffect(() => {
+    if (watchRoom && watchCheckIn && watchCheckOut) {
+      const checkIn = parseISO(watchCheckIn);
+      const checkOut = parseISO(watchCheckOut);
+      const nights = differenceInDays(checkOut, checkIn);
+      if (nights > 0) {
+        handleAvailabilityCheck();
+      }
+    }
+  }, [watchRoom, watchCheckIn, watchCheckOut]);
 
   // Booking mutation
   const bookingMutation = useMutation({
