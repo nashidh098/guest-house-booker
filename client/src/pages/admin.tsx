@@ -458,6 +458,12 @@ export default function Admin() {
                           <div>
                             <p className="font-medium">{booking.fullName}</p>
                             <p className="text-sm text-muted-foreground">{booking.idNumber}</p>
+                            {booking.phoneNumber && (
+                              <p className="text-sm text-muted-foreground">{booking.phoneNumber}</p>
+                            )}
+                            {booking.customerNotes && (
+                              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 italic">Has notes</p>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>Room {booking.roomNumber}</TableCell>
@@ -495,12 +501,19 @@ export default function Admin() {
                                 </DialogTrigger>
                                 <DialogContent className="max-w-2xl">
                                   <DialogHeader>
-                                    <DialogTitle>Payment Slip</DialogTitle>
+                                    <DialogTitle>Booking Details</DialogTitle>
                                     <DialogDescription>
-                                      Uploaded by {booking.fullName}
+                                      {booking.fullName} - {booking.phoneNumber || "No phone"}
                                     </DialogDescription>
                                   </DialogHeader>
-                                  <div className="mt-4">
+                                  {booking.customerNotes && (
+                                    <div className="p-3 bg-muted rounded-md mb-4">
+                                      <p className="text-sm font-medium mb-1">Customer Notes:</p>
+                                      <p className="text-sm text-muted-foreground">{booking.customerNotes}</p>
+                                    </div>
+                                  )}
+                                  <div className="mt-2">
+                                    <p className="text-sm font-medium mb-2">Payment Slip:</p>
                                     <img
                                       src={`/uploads/${booking.paymentSlip}`}
                                       alt="Payment slip"

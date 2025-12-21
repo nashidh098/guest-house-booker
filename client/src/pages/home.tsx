@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -21,6 +22,8 @@ import { ROOMS, BANK_ACCOUNTS, DAILY_RATE_MVR, USD_EXCHANGE_RATE, type Booking }
 const bookingFormSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
   idNumber: z.string().min(3, "ID/Passport number is required"),
+  phoneNumber: z.string().min(7, "Phone number is required"),
+  customerNotes: z.string().optional(),
   roomNumber: z.string().min(1, "Please select a room"),
   checkInDate: z.string().min(1, "Check-in date is required"),
   checkOutDate: z.string().min(1, "Check-out date is required"),
@@ -42,6 +45,8 @@ export default function Home() {
     defaultValues: {
       fullName: "",
       idNumber: "",
+      phoneNumber: "",
+      customerNotes: "",
       roomNumber: "",
       checkInDate: "",
       checkOutDate: "",
@@ -182,6 +187,8 @@ export default function Home() {
     const formData = new FormData();
     formData.append("fullName", values.fullName);
     formData.append("idNumber", values.idNumber);
+    formData.append("phoneNumber", values.phoneNumber);
+    formData.append("customerNotes", values.customerNotes || "");
     formData.append("roomNumber", values.roomNumber);
     formData.append("checkInDate", values.checkInDate);
     formData.append("checkOutDate", values.checkOutDate);
@@ -264,6 +271,25 @@ export default function Home() {
                             placeholder="Enter your ID or passport number" 
                             {...field}
                             data-testid="input-id-number"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your phone number" 
+                            type="tel"
+                            {...field}
+                            data-testid="input-phone-number"
                           />
                         </FormControl>
                         <FormMessage />
@@ -526,6 +552,28 @@ export default function Home() {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Customer Notes */}
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="customerNotes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Special Requests or Notes (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Any special requests, early check-in, dietary requirements, etc." 
+                            className="min-h-[100px]"
+                            {...field}
+                            data-testid="input-customer-notes"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 {/* Submit Button */}

@@ -6,6 +6,8 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 interface BookingNotification {
   fullName: string;
   idNumber: string;
+  phoneNumber: string | null;
+  customerNotes: string | null;
   roomNumber: number;
   checkInDate: string;
   checkOutDate: string;
@@ -28,6 +30,7 @@ export async function sendBookingNotification(booking: BookingNotification, appU
 👤 *Guest Details*
 Name: ${booking.fullName}
 ID/Passport: ${booking.idNumber}
+Phone: ${booking.phoneNumber || "Not provided"}
 
 🛏️ *Room Information*
 Room Number: ${booking.roomNumber}
@@ -40,7 +43,7 @@ Total: ${booking.totalMVR.toLocaleString()} MVR
 (USD ${booking.totalUSD})
 Payment Slip: ${booking.paymentSlip ? "Uploaded" : "Not uploaded"}
 
-📅 Booked on: ${new Date().toLocaleDateString()}
+${booking.customerNotes ? `📝 *Customer Notes*\n${booking.customerNotes}\n` : ""}📅 Booked on: ${new Date().toLocaleDateString()}
     `.trim();
 
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;

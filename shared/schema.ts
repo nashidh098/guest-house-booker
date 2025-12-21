@@ -22,6 +22,8 @@ export const bookings = pgTable("bookings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   fullName: text("full_name").notNull(),
   idNumber: text("id_number").notNull(),
+  phoneNumber: text("phone_number"),
+  customerNotes: text("customer_notes"),
   roomNumber: integer("room_number").notNull(),
   checkInDate: text("check_in_date").notNull(),
   checkOutDate: text("check_out_date").notNull(),

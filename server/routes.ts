@@ -206,12 +206,14 @@ export async function registerRoutes(
   // Create booking with validation
   app.post("/api/bookings", upload.single("paymentSlip"), async (req, res) => {
     try {
-      const { fullName, idNumber, roomNumber, checkInDate, checkOutDate, totalNights, totalMVR, totalUSD } = req.body;
+      const { fullName, idNumber, phoneNumber, customerNotes, roomNumber, checkInDate, checkOutDate, totalNights, totalMVR, totalUSD } = req.body;
       
       // Build booking data
       const bookingData = {
         fullName,
         idNumber,
+        phoneNumber: phoneNumber || null,
+        customerNotes: customerNotes || null,
         roomNumber: parseInt(roomNumber, 10),
         checkInDate,
         checkOutDate,
@@ -227,6 +229,8 @@ export async function registerRoutes(
       const validationSchema = z.object({
         fullName: z.string().min(2, "Full name is required"),
         idNumber: z.string().min(3, "ID/Passport number is required"),
+        phoneNumber: z.string().nullable(),
+        customerNotes: z.string().nullable(),
         roomNumber: z.number().min(1).max(10),
         checkInDate: z.string().min(1, "Check-in date is required"),
         checkOutDate: z.string().min(1, "Check-out date is required"),
@@ -271,6 +275,8 @@ export async function registerRoutes(
       sendBookingNotification({
         fullName: booking.fullName,
         idNumber: booking.idNumber,
+        phoneNumber: booking.phoneNumber,
+        customerNotes: booking.customerNotes,
         roomNumber: booking.roomNumber,
         checkInDate: booking.checkInDate,
         checkOutDate: booking.checkOutDate,
