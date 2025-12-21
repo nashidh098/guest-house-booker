@@ -88,4 +88,4 @@ export const BANK_ACCOUNTS: BankAccount[] = [
 
 // Constants
 export const DAILY_RATE_MVR = 600;
-export const USD_EXCHANGE_RATE = 19.50;
+export const USD_EXCHANGE_RATE = 20; // 600 MVR = $30 USD

@@ -77,5 +77,5 @@ The application runs with `npm run dev` which starts:
 - Account Name: MOONLIGHT INN
 
 ## Pricing
-- Daily room rate: 600 MVR
-- USD Exchange rate: 1 USD = 19.50 MVR
+- Daily room rate: 600 MVR / $30 USD per night
+- USD Exchange rate: 1 USD = 20 MVR
