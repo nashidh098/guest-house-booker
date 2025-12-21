@@ -1,0 +1,49 @@
+Build a Guest House Room Booking web application using Node.js with Express for backend and HTML, CSS, and JavaScript for frontend. Use a simple database such as SQLite or MongoDB.
+
+The application is for room booking.
+
+Create a customer booking form with the following required fields:
+Full Name
+ID Card Number or Passport Number
+Select Room Number (dropdown: Room 1, Room 2, Room 3, etc.)
+Check-in Date (date picker)
+Check-out Date (date picker)
+
+Rooms must not be double-booked. If a room is already booked, other customers must not be able to book the same room for overlapping dates. When a user selects dates and room, check existing bookings in the database. If dates overlap, show a message “Room already booked for selected dates” and disable the submit button.
+
+A booking conflicts if:
+newCheckin < existingCheckout AND newCheckout > existingCheckin
+
+Daily room rent is 600 MVR. Automatically calculate total nights, total amount in MVR, and total amount in USD when dates are selected. The USD exchange rate is fixed at 1 USD = 19.50 MVR.
+
+Total nights = checkout date minus check-in date
+Total MVR = total nights × 600
+Total USD = total MVR ÷ 19.50
+
+Display both MVR and USD clearly on the form.
+
+Display bank transfer details clearly above the payment upload section. Each account number must have a copy-to-clipboard button and show “Account number copied” after copying.
+
+Bank of Maldives
+MVR Account: 7777777776666667
+Account Name: W Collection
+USD Account: 7777777776666666
+Account Name: W Collection
+
+Maldives Islamic Bank
+MVR Account: 99999999888999889
+Account Name: W Collection
+USD Account: 999988887777888888
+Account Name: W Collection
+
+Allow users to upload a bank transfer slip image. Save the uploaded file on the server in an uploads folder and store the file name in the database.
+
+On submission, validate all fields, confirm room availability, and save the booking in the database with status set to Pending. Prevent submission if the room is already booked.
+
+After successful booking, automatically generate an invoice page that includes guest name, ID or passport number, room number, check-in date, check-out date, total nights, price per day, total amount in MVR, total amount in USD, and booking date.
+
+Provide options to download the invoice as a PDF file and to share the invoice.
+
+Create an admin dashboard where the admin can view all bookings, view uploaded payment slips, and see booking status (Pending or Confirmed). When a new booking is submitted, the admin must receive an immediate notification (console log or email is acceptable).
+
+Use a clean, mobile-friendly design. Structure the project properly with Express backend, frontend public folder, uploads folder, database integration, and include clear instructions on how to run the project on Replit.
