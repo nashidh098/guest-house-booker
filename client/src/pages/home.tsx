@@ -108,11 +108,13 @@ export default function Home() {
       const result = await checkAvailability();
       if (result.data && !result.data.available) {
         setIsRoomUnavailable(true);
-        setAvailabilityMessage("Room already booked for selected dates");
-      } else {
+        setAvailabilityMessage("Not Available - Room already booked for selected dates");
+      } else if (result.data && result.data.available) {
         setIsRoomUnavailable(false);
-        setAvailabilityMessage(null);
+        setAvailabilityMessage("Available - Room is available for your selected dates");
       }
+    } else {
+      setAvailabilityMessage(null);
     }
   };
 
@@ -459,7 +461,15 @@ export default function Home() {
 
                   {/* Availability Message */}
                   {availabilityMessage && (
-                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm" data-testid="text-availability-error">
+                    <div 
+                      className={`p-3 rounded-lg text-sm flex items-center gap-2 ${
+                        isRoomUnavailable 
+                          ? "bg-destructive/10 border border-destructive/20 text-destructive" 
+                          : "bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400"
+                      }`}
+                      data-testid={isRoomUnavailable ? "text-availability-error" : "text-availability-success"}
+                    >
+                      {isRoomUnavailable ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}
                       {availabilityMessage}
                     </div>
                   )}
