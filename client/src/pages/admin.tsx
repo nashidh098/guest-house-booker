@@ -374,7 +374,7 @@ export default function Admin() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold" data-testid="text-admin-title">Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground">W Collection Guest House</p>
+            <p className="text-sm text-muted-foreground">MOONLIGHT INN</p>
           </div>
           <div className="flex items-center gap-2">
             {newBookingsCount > 0 && (

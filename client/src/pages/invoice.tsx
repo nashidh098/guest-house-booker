@@ -63,8 +63,8 @@ export default function Invoice() {
     if (!booking) return;
 
     const shareData = {
-      title: "W Collection - Booking Invoice",
-      text: `Booking confirmation for ${booking.fullName} at W Collection Guest House. Room ${booking.roomNumber}, ${booking.checkInDate} to ${booking.checkOutDate}. Total: ${booking.totalMVR} MVR ($${booking.totalUSD})`,
+      title: "MOONLIGHT INN - Booking Invoice",
+      text: `Booking confirmation for ${booking.fullName} at MOONLIGHT INN. Room ${booking.roomNumber}, ${booking.checkInDate} to ${booking.checkOutDate}. Total: ${booking.totalMVR} MVR ($${booking.totalUSD})`,
       url: window.location.href,
     };
 
@@ -163,7 +163,7 @@ export default function Invoice() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 pb-6 border-b">
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-primary mb-1" data-testid="text-brand">
-                  W Collection
+                  MOONLIGHT INN
                 </h1>
                 <p className="text-muted-foreground">Guest House</p>
                 <p className="text-sm text-muted-foreground">Maldives</p>
@@ -253,7 +253,7 @@ export default function Invoice() {
 
             {/* Footer */}
             <div className="text-center pt-6 border-t">
-              <p className="text-muted-foreground text-sm mb-1">Thank you for choosing W Collection!</p>
+              <p className="text-muted-foreground text-sm mb-1">Thank you for choosing MOONLIGHT INN!</p>
               <p className="text-xs text-muted-foreground">We look forward to hosting you.</p>
             </div>
           </div>

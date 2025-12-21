@@ -1,7 +1,7 @@
-# W Collection Guest House - Room Booking System
+# MOONLIGHT INN - Room Booking System
 
 ## Overview
-A complete guest house room booking web application for W Collection in Maldives. The system allows customers to book rooms, upload payment slips, and receive invoices. Administrators can view and manage all bookings.
+A complete guest house room booking web application for MOONLIGHT INN in Maldives. The system allows customers to book rooms, upload payment slips, and receive invoices. Administrators can view and manage all bookings.
 
 ## Tech Stack
 - **Frontend**: React with TypeScript, Vite, TailwindCSS, Shadcn/UI components
@@ -70,7 +70,7 @@ The application runs with `npm run dev` which starts:
 ## Bank Account Details
 - **Bank of Maldives**: MVR 7777777776666667 / USD 7777777776666666
 - **Maldives Islamic Bank**: MVR 99999999888999889 / USD 999988887777888888
-- Account Name: W Collection
+- Account Name: MOONLIGHT INN
 
 ## Pricing
 - Daily room rate: 600 MVR

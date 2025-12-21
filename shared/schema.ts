@@ -76,13 +76,13 @@ export const BANK_ACCOUNTS: BankAccount[] = [
     bankName: "Bank of Maldives",
     mvrAccount: "7777777776666667",
     usdAccount: "7777777776666666",
-    accountName: "W Collection",
+    accountName: "MOONLIGHT INN",
   },
   {
     bankName: "Maldives Islamic Bank",
     mvrAccount: "99999999888999889",
     usdAccount: "999988887777888888",
-    accountName: "W Collection",
+    accountName: "MOONLIGHT INN",
   },
 ];
 

@@ -209,7 +209,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-4">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4" data-testid="text-hero-title">
-            Welcome to W Collection
+            Welcome to MOONLIGHT INN
           </h1>
           <p className="text-lg md:text-xl text-white/90 max-w-2xl" data-testid="text-hero-subtitle">
             Experience comfort and luxury in the heart of Maldives
@@ -230,7 +230,7 @@ export default function Home() {
         <Card className="shadow-lg">
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-2xl md:text-3xl" data-testid="text-form-title">Reserve Your Room</CardTitle>
-            <CardDescription className="text-base">Fill in your details to book your stay at W Collection</CardDescription>
+            <CardDescription className="text-base">Fill in your details to book your stay at MOONLIGHT INN</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <Form {...form}>
@@ -602,7 +602,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-muted py-8 mt-12">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <p className="text-lg font-semibold mb-2">W Collection Guest House</p>
+          <p className="text-lg font-semibold mb-2">MOONLIGHT INN</p>
           <p className="text-sm text-muted-foreground">Maldives</p>
           <p className="text-xs text-muted-foreground mt-4">All rights reserved 2024</p>
         </div>
