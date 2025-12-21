@@ -16,7 +16,9 @@ import {
   Trash2,
   Ban,
   Edit,
-  XCircle
+  XCircle,
+  Image,
+  Plus
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -56,7 +58,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { type Booking, DAILY_RATE_MVR, USD_EXCHANGE_RATE } from "@shared/schema";
+import { type Booking, type GalleryPhoto, DAILY_RATE_MVR, USD_EXCHANGE_RATE } from "@shared/schema";
 
 interface BookingStats {
   total: number;
@@ -77,11 +79,19 @@ export default function Admin() {
   const [editCheckIn, setEditCheckIn] = useState("");
   const [editCheckOut, setEditCheckOut] = useState("");
   const [newBookingsCount, setNewBookingsCount] = useState(0);
+  const [newPhotoUrl, setNewPhotoUrl] = useState("");
+  const [newPhotoAlt, setNewPhotoAlt] = useState("");
+  const [showAddPhotoDialog, setShowAddPhotoDialog] = useState(false);
 
   // Fetch all bookings
   const { data: bookings = [], isLoading } = useQuery<Booking[]>({
     queryKey: ["/api/bookings"],
     refetchInterval: 5000,
+  });
+
+  // Fetch gallery photos
+  const { data: galleryPhotos = [], isLoading: galleryLoading } = useQuery<GalleryPhoto[]>({
+    queryKey: ["/api/gallery"],
   });
 
   // Calculate stats
@@ -225,6 +235,51 @@ export default function Admin() {
       toast({
         title: "Error",
         description: error.message || "Failed to update dates. Room may not be available.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Add gallery photo mutation
+  const addPhotoMutation = useMutation({
+    mutationFn: async ({ imageUrl, altText }: { imageUrl: string; altText: string }) => {
+      return apiRequest("POST", "/api/gallery", { imageUrl, altText, displayOrder: galleryPhotos.length });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
+      setShowAddPhotoDialog(false);
+      setNewPhotoUrl("");
+      setNewPhotoAlt("");
+      toast({
+        title: "Photo Added",
+        description: "The photo has been added to the gallery",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add photo",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete gallery photo mutation
+  const deletePhotoMutation = useMutation({
+    mutationFn: async (photoId: string) => {
+      return apiRequest("DELETE", `/api/gallery/${photoId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
+      toast({
+        title: "Photo Deleted",
+        description: "The photo has been removed from the gallery",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete photo",
         variant: "destructive",
       });
     },
@@ -671,7 +726,152 @@ export default function Admin() {
             )}
           </CardContent>
         </Card>
+
+        {/* Gallery Management Section */}
+        <Card className="mt-8">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
+            <CardTitle className="flex items-center gap-2">
+              <Image className="h-5 w-5" />
+              Photo Gallery Management
+            </CardTitle>
+            <Button 
+              onClick={() => setShowAddPhotoDialog(true)}
+              data-testid="button-add-photo"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Photo
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {galleryLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="aspect-video rounded-md" />
+                ))}
+              </div>
+            ) : galleryPhotos.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Image className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No photos in gallery yet</p>
+                <p className="text-sm">Click "Add Photo" to add images</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {galleryPhotos.map((photo) => (
+                  <div 
+                    key={photo.id} 
+                    className="relative group aspect-video rounded-md overflow-hidden bg-muted"
+                  >
+                    <img
+                      src={photo.imageUrl}
+                      alt={photo.altText}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=Image+Error";
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            data-testid={`button-delete-photo-${photo.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Photo?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently remove this photo from the gallery.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deletePhotoMutation.mutate(photo.id)}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
+                      <p className="text-white text-xs truncate">{photo.altText}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
+
+      {/* Add Photo Dialog */}
+      <Dialog open={showAddPhotoDialog} onOpenChange={setShowAddPhotoDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Photo to Gallery</DialogTitle>
+            <DialogDescription>
+              Enter the URL and description for the new photo
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="photo-url">Image URL</Label>
+              <Input
+                id="photo-url"
+                type="url"
+                placeholder="https://example.com/image.jpg"
+                value={newPhotoUrl}
+                onChange={(e) => setNewPhotoUrl(e.target.value)}
+                data-testid="input-photo-url"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="photo-alt">Description</Label>
+              <Input
+                id="photo-alt"
+                placeholder="e.g., Beachfront view, Room interior..."
+                value={newPhotoAlt}
+                onChange={(e) => setNewPhotoAlt(e.target.value)}
+                data-testid="input-photo-alt"
+              />
+            </div>
+            {newPhotoUrl && (
+              <div className="rounded-md overflow-hidden bg-muted aspect-video">
+                <img
+                  src={newPhotoUrl}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=Invalid+URL";
+                  }}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddPhotoDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => addPhotoMutation.mutate({ imageUrl: newPhotoUrl, altText: newPhotoAlt })}
+              disabled={!newPhotoUrl || !newPhotoAlt || addPhotoMutation.isPending}
+              data-testid="button-save-photo"
+            >
+              {addPhotoMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Add Photo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dates Modal */}
       <Dialog open={showEditModal} onOpenChange={(open) => {

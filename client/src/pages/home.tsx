@@ -19,7 +19,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ROOMS, BANK_ACCOUNTS, DAILY_RATE_MVR, USD_EXCHANGE_RATE, type Booking } from "@shared/schema";
+import { ROOMS, BANK_ACCOUNTS, DAILY_RATE_MVR, USD_EXCHANGE_RATE, type Booking, type GalleryPhoto, DEFAULT_GALLERY_IMAGES } from "@shared/schema";
 
 const bookingFormSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
@@ -33,14 +33,6 @@ const bookingFormSchema = z.object({
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
-const GUESTHOUSE_IMAGES = [
-  { src: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80", alt: "Beachfront view" },
-  { src: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80", alt: "Luxury room interior" },
-  { src: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80", alt: "Ocean view room" },
-  { src: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80", alt: "Resort pool area" },
-  { src: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&q=80", alt: "Tropical paradise" },
-];
-
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -52,6 +44,16 @@ export default function Home() {
 
   const autoplayPlugin = useMemo(() => Autoplay({ delay: 4000, stopOnInteraction: false }), []);
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [autoplayPlugin]);
+
+  // Fetch gallery photos from database
+  const { data: galleryPhotos = [] } = useQuery<GalleryPhoto[]>({
+    queryKey: ["/api/gallery"],
+  });
+
+  // Use fetched gallery photos or default images
+  const displayImages = galleryPhotos.length > 0 
+    ? galleryPhotos.map(p => ({ src: p.imageUrl, alt: p.altText }))
+    : DEFAULT_GALLERY_IMAGES.map(p => ({ src: p.imageUrl, alt: p.altText }));
 
   const scrollPrev = () => emblaApi?.scrollPrev();
   const scrollNext = () => emblaApi?.scrollNext();
@@ -268,7 +270,7 @@ export default function Home() {
           <div className="relative">
             <div className="overflow-hidden rounded-xl" ref={emblaRef}>
               <div className="flex">
-                {GUESTHOUSE_IMAGES.map((image, index) => (
+                {displayImages.map((image, index) => (
                   <div key={index} className="flex-[0_0_100%] min-w-0 md:flex-[0_0_50%] lg:flex-[0_0_33.33%] px-2">
                     <div className="aspect-[4/3] overflow-hidden rounded-lg">
                       <img
