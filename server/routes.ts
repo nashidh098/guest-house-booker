@@ -160,9 +160,9 @@ export async function registerRoutes(
         req.params.id, 
         checkInDate, 
         checkOutDate, 
-        parseInt(totalNights, 10),
-        parseInt(totalMVR, 10),
-        totalUSD
+        typeof totalNights === 'number' ? totalNights : parseInt(totalNights, 10),
+        typeof totalMVR === 'number' ? totalMVR : parseInt(totalMVR, 10),
+        String(totalUSD)
       );
       
       if (!booking) {
