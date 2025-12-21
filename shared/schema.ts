@@ -84,6 +84,30 @@ export const BANK_ACCOUNTS: BankAccount[] = [
   },
 ];
 
+// Gallery photos schema
+export const galleryPhotos = pgTable("gallery_photos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  imageUrl: text("image_url").notNull(),
+  altText: text("alt_text").notNull(),
+  displayOrder: integer("display_order").notNull().default(0),
+});
+
+export const insertGalleryPhotoSchema = createInsertSchema(galleryPhotos).omit({
+  id: true,
+});
+
+export type InsertGalleryPhoto = z.infer<typeof insertGalleryPhotoSchema>;
+export type GalleryPhoto = typeof galleryPhotos.$inferSelect;
+
 // Constants
 export const DAILY_RATE_MVR = 600;
 export const USD_EXCHANGE_RATE = 20; // 600 MVR = $30 USD
+
+// Default gallery images (used when database is empty)
+export const DEFAULT_GALLERY_IMAGES = [
+  { imageUrl: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80", altText: "Beachfront view" },
+  { imageUrl: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80", altText: "Luxury room interior" },
+  { imageUrl: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80", altText: "Ocean view room" },
+  { imageUrl: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80", altText: "Resort pool area" },
+  { imageUrl: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&q=80", altText: "Tropical paradise" },
+];

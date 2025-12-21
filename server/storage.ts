@@ -1,6 +1,6 @@
-import { users, bookings, type User, type InsertUser, type Booking, type InsertBooking } from "@shared/schema";
+import { users, bookings, galleryPhotos, type User, type InsertUser, type Booking, type InsertBooking, type GalleryPhoto, type InsertGalleryPhoto } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, lt, gt, sql } from "drizzle-orm";
+import { eq, and, or, lt, gt, sql, asc } from "drizzle-orm";
 import { format } from "date-fns";
 
 export interface IStorage {
@@ -16,6 +16,11 @@ export interface IStorage {
   updateBookingDates(id: string, checkIn: string, checkOut: string, totalNights: number, totalMVR: number, totalUSD: string): Promise<Booking | undefined>;
   deleteBooking(id: string): Promise<boolean>;
   checkRoomAvailability(roomNumber: number, checkIn: string, checkOut: string, excludeBookingId?: string): Promise<boolean>;
+  
+  // Gallery operations
+  getAllGalleryPhotos(): Promise<GalleryPhoto[]>;
+  addGalleryPhoto(photo: InsertGalleryPhoto): Promise<GalleryPhoto>;
+  deleteGalleryPhoto(id: string): Promise<boolean>;
 }
 
 // DatabaseStorage implementation using PostgreSQL
@@ -125,6 +130,31 @@ export class DatabaseStorage implements IStorage {
       );
     
     return conflictingBookings.length === 0;
+  }
+
+  // Gallery operations
+  async getAllGalleryPhotos(): Promise<GalleryPhoto[]> {
+    const photos = await db
+      .select()
+      .from(galleryPhotos)
+      .orderBy(asc(galleryPhotos.displayOrder));
+    return photos;
+  }
+
+  async addGalleryPhoto(photo: InsertGalleryPhoto): Promise<GalleryPhoto> {
+    const [newPhoto] = await db
+      .insert(galleryPhotos)
+      .values(photo)
+      .returning();
+    return newPhoto;
+  }
+
+  async deleteGalleryPhoto(id: string): Promise<boolean> {
+    const result = await db
+      .delete(galleryPhotos)
+      .where(eq(galleryPhotos.id, id))
+      .returning();
+    return result.length > 0;
   }
 }
 

@@ -4,7 +4,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { storage } from "./storage";
-import { insertBookingSchema } from "@shared/schema";
+import { insertBookingSchema, insertGalleryPhotoSchema, DEFAULT_GALLERY_IMAGES } from "@shared/schema";
 import { z } from "zod";
 import { sendBookingNotification } from "./telegram";
 
@@ -203,6 +203,66 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to fetch booking" });
     }
   });
+
+  // ==================== Gallery Routes ====================
+  
+  // Get all gallery photos
+  app.get("/api/gallery", async (req, res) => {
+    try {
+      const photos = await storage.getAllGalleryPhotos();
+      // If no photos in database, return default images
+      if (photos.length === 0) {
+        return res.json(DEFAULT_GALLERY_IMAGES.map((img, index) => ({
+          id: `default-${index}`,
+          imageUrl: img.imageUrl,
+          altText: img.altText,
+          displayOrder: index,
+        })));
+      }
+      res.json(photos);
+    } catch (error) {
+      console.error("Error fetching gallery:", error);
+      res.status(500).json({ message: "Failed to fetch gallery" });
+    }
+  });
+
+  // Add gallery photo
+  app.post("/api/gallery", async (req, res) => {
+    try {
+      const { imageUrl, altText, displayOrder } = req.body;
+      
+      if (!imageUrl || !altText) {
+        return res.status(400).json({ message: "Image URL and alt text are required" });
+      }
+
+      const photo = await storage.addGalleryPhoto({
+        imageUrl,
+        altText,
+        displayOrder: displayOrder || 0,
+      });
+      
+      res.status(201).json(photo);
+    } catch (error) {
+      console.error("Error adding gallery photo:", error);
+      res.status(500).json({ message: "Failed to add photo" });
+    }
+  });
+
+  // Delete gallery photo
+  app.delete("/api/gallery/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteGalleryPhoto(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Photo not found" });
+      }
+      res.json({ message: "Photo deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting gallery photo:", error);
+      res.status(500).json({ message: "Failed to delete photo" });
+    }
+  });
+
+  // ==================== Booking Routes ====================
 
   // Create booking with validation
   app.post("/api/bookings", upload.single("paymentSlip"), async (req, res) => {
