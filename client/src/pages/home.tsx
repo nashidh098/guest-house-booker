@@ -5,7 +5,9 @@ import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format, differenceInDays, parseISO } from "date-fns";
-import { CalendarIcon, User, CreditCard, Building2, Copy, Check, Upload, X, Loader2 } from "lucide-react";
+import { CalendarIcon, User, CreditCard, Building2, Copy, Check, Upload, X, Loader2, Phone, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import useEmblaCarousel from "embla-carousel-react";
+import Autoplay from "embla-carousel-autoplay";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -31,6 +33,14 @@ const bookingFormSchema = z.object({
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
+const GUESTHOUSE_IMAGES = [
+  { src: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80", alt: "Beachfront view" },
+  { src: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80", alt: "Luxury room interior" },
+  { src: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80", alt: "Ocean view room" },
+  { src: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80", alt: "Resort pool area" },
+  { src: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&q=80", alt: "Tropical paradise" },
+];
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -39,6 +49,11 @@ export default function Home() {
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
   const [isRoomUnavailable, setIsRoomUnavailable] = useState(false);
   const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null);
+
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4000, stopOnInteraction: false })]);
+
+  const scrollPrev = () => emblaApi?.scrollPrev();
+  const scrollNext = () => emblaApi?.scrollNext();
 
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
@@ -222,6 +237,51 @@ export default function Home() {
           >
             Book Your Stay
           </Button>
+        </div>
+      </div>
+
+      {/* Photo Gallery Section */}
+      <div className="py-12 bg-muted/50">
+        <div className="max-w-6xl mx-auto px-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-8" data-testid="text-gallery-title">
+            Our Beautiful Property
+          </h2>
+          <div className="relative">
+            <div className="overflow-hidden rounded-xl" ref={emblaRef}>
+              <div className="flex">
+                {GUESTHOUSE_IMAGES.map((image, index) => (
+                  <div key={index} className="flex-[0_0_100%] min-w-0 md:flex-[0_0_50%] lg:flex-[0_0_33.33%] px-2">
+                    <div className="aspect-[4/3] overflow-hidden rounded-lg">
+                      <img
+                        src={image.src}
+                        alt={image.alt}
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                        data-testid={`img-gallery-${index}`}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm"
+              onClick={scrollPrev}
+              data-testid="button-gallery-prev"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm"
+              onClick={scrollNext}
+              data-testid="button-gallery-next"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -603,7 +663,22 @@ export default function Home() {
       <footer className="bg-muted py-8 mt-12">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <p className="text-lg font-semibold mb-2">MOONLIGHT INN</p>
-          <p className="text-sm text-muted-foreground">Maldives</p>
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-3">
+            <MapPin className="h-4 w-4" />
+            <span data-testid="text-location">Sh.Maaungoodhoo, Maldives</span>
+          </div>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Phone className="h-4 w-4" />
+              <span data-testid="text-contact">9994026</span>
+            </div>
+            <a href="tel:9994026">
+              <Button size="sm" data-testid="button-call">
+                <Phone className="mr-2 h-4 w-4" />
+                Call Us
+              </Button>
+            </a>
+          </div>
           <p className="text-xs text-muted-foreground mt-4">All rights reserved 2024</p>
         </div>
       </footer>
