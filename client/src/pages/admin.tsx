@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInDays } from "date-fns";
 import { 
   CalendarCheck, 
   Clock, 
@@ -12,13 +12,18 @@ import {
   Search,
   Bell,
   Calendar,
-  Loader2
+  Loader2,
+  Trash2,
+  Ban,
+  Edit,
+  XCircle
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -34,16 +39,29 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { type Booking } from "@shared/schema";
+import { type Booking, DAILY_RATE_MVR, USD_EXCHANGE_RATE } from "@shared/schema";
 
 interface BookingStats {
   total: number;
   pending: number;
   confirmed: number;
+  cancelled: number;
   todayCheckIns: number;
 }
 
@@ -52,12 +70,15 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showSlipModal, setShowSlipModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editCheckIn, setEditCheckIn] = useState("");
+  const [editCheckOut, setEditCheckOut] = useState("");
   const [newBookingsCount, setNewBookingsCount] = useState(0);
 
   // Fetch all bookings
   const { data: bookings = [], isLoading } = useQuery<Booking[]>({
     queryKey: ["/api/bookings"],
-    refetchInterval: 5000, // Poll every 5 seconds for new bookings
+    refetchInterval: 5000,
   });
 
   // Calculate stats
@@ -65,9 +86,10 @@ export default function Admin() {
     total: bookings.length,
     pending: bookings.filter(b => b.status === "Pending").length,
     confirmed: bookings.filter(b => b.status === "Confirmed").length,
+    cancelled: bookings.filter(b => b.status === "Cancelled" || b.status === "Rejected").length,
     todayCheckIns: bookings.filter(b => {
       const today = format(new Date(), "yyyy-MM-dd");
-      return b.checkInDate === today;
+      return b.checkInDate === today && b.status !== "Cancelled" && b.status !== "Rejected";
     }).length,
   };
 
@@ -80,13 +102,112 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
       toast({
         title: "Booking Confirmed",
-        description: "The booking status has been updated to Confirmed",
+        description: "The booking has been confirmed",
       });
     },
     onError: () => {
       toast({
         title: "Error",
         description: "Failed to confirm booking",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reject booking mutation
+  const rejectMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      return apiRequest("PATCH", `/api/bookings/${bookingId}/reject`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      toast({
+        title: "Booking Rejected",
+        description: "The booking has been rejected and dates are now available",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to reject booking",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Cancel booking mutation
+  const cancelMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      return apiRequest("PATCH", `/api/bookings/${bookingId}/cancel`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      toast({
+        title: "Booking Cancelled",
+        description: "The booking has been cancelled and dates are now available",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to cancel booking",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete booking mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      return apiRequest("DELETE", `/api/bookings/${bookingId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      toast({
+        title: "Booking Deleted",
+        description: "The booking has been permanently deleted",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete booking",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update dates mutation
+  const updateDatesMutation = useMutation({
+    mutationFn: async ({ bookingId, checkInDate, checkOutDate, totalNights, totalMVR, totalUSD }: {
+      bookingId: string;
+      checkInDate: string;
+      checkOutDate: string;
+      totalNights: number;
+      totalMVR: number;
+      totalUSD: string;
+    }) => {
+      return apiRequest("PATCH", `/api/bookings/${bookingId}/dates`, {
+        checkInDate,
+        checkOutDate,
+        totalNights,
+        totalMVR,
+        totalUSD,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      setShowEditModal(false);
+      setSelectedBooking(null);
+      toast({
+        title: "Dates Updated",
+        description: "The booking dates have been updated",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update dates. Room may not be available.",
         variant: "destructive",
       });
     },
@@ -104,7 +225,6 @@ export default function Admin() {
           title: "New Booking!",
           description: `${newCount} new booking${newCount > 1 ? 's' : ''} received`,
         });
-        console.log(`[ADMIN NOTIFICATION] ${newCount} new booking(s) received!`);
       }
     }
     localStorage.setItem("lastBookingCount", bookings.length.toString());
@@ -129,6 +249,75 @@ export default function Admin() {
     }
   };
 
+  const openEditModal = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setEditCheckIn(booking.checkInDate);
+    setEditCheckOut(booking.checkOutDate);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateDates = () => {
+    if (!selectedBooking || !editCheckIn || !editCheckOut) return;
+
+    const checkIn = new Date(editCheckIn);
+    const checkOut = new Date(editCheckOut);
+    
+    if (checkOut <= checkIn) {
+      toast({
+        title: "Invalid Dates",
+        description: "Check-out date must be after check-in date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const totalNights = differenceInDays(checkOut, checkIn);
+    const totalMVR = totalNights * DAILY_RATE_MVR;
+    const totalUSD = (totalMVR / USD_EXCHANGE_RATE).toFixed(2);
+
+    updateDatesMutation.mutate({
+      bookingId: selectedBooking.id,
+      checkInDate: editCheckIn,
+      checkOutDate: editCheckOut,
+      totalNights,
+      totalMVR,
+      totalUSD,
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "Confirmed":
+        return (
+          <Badge variant="default" className="bg-green-600">
+            <CheckCircle className="mr-1 h-3 w-3" />
+            Confirmed
+          </Badge>
+        );
+      case "Rejected":
+        return (
+          <Badge variant="destructive">
+            <XCircle className="mr-1 h-3 w-3" />
+            Rejected
+          </Badge>
+        );
+      case "Cancelled":
+        return (
+          <Badge variant="secondary">
+            <Ban className="mr-1 h-3 w-3" />
+            Cancelled
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline">
+            <Clock className="mr-1 h-3 w-3" />
+            Pending
+          </Badge>
+        );
+    }
+  };
+
   const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: number; icon: any; color: string }) => (
     <Card className="hover-elevate">
       <CardContent className="pt-6">
@@ -150,8 +339,8 @@ export default function Admin() {
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           <Skeleton className="h-10 w-64 mb-8" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            {[1, 2, 3, 4, 5].map((i) => (
               <Skeleton key={i} className="h-28 rounded-xl" />
             ))}
           </div>
@@ -191,7 +380,7 @@ export default function Admin() {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <StatCard
             title="Total Bookings"
             value={stats.total}
@@ -209,6 +398,12 @@ export default function Admin() {
             value={stats.confirmed}
             icon={CheckCircle}
             color="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+          />
+          <StatCard
+            title="Cancelled/Rejected"
+            value={stats.cancelled}
+            icon={XCircle}
+            color="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
           />
           <StatCard
             title="Today's Check-ins"
@@ -274,21 +469,12 @@ export default function Admin() {
                             <p className="text-sm text-muted-foreground">${booking.totalUSD}</p>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={booking.status === "Confirmed" ? "default" : "secondary"}
-                            data-testid={`badge-status-${booking.id}`}
-                          >
-                            {booking.status === "Confirmed" ? (
-                              <CheckCircle className="mr-1 h-3 w-3" />
-                            ) : (
-                              <Clock className="mr-1 h-3 w-3" />
-                            )}
-                            {booking.status}
-                          </Badge>
+                        <TableCell data-testid={`badge-status-${booking.id}`}>
+                          {getStatusBadge(booking.status)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* View Payment Slip */}
                             {booking.paymentSlip && (
                               <Dialog open={showSlipModal && selectedBooking?.id === booking.id} onOpenChange={(open) => {
                                 setShowSlipModal(open);
@@ -325,13 +511,27 @@ export default function Admin() {
                                 </DialogContent>
                               </Dialog>
                             )}
+
+                            {/* Edit Dates - Only for active bookings */}
+                            {booking.status !== "Cancelled" && booking.status !== "Rejected" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditModal(booking)}
+                                data-testid={`button-edit-${booking.id}`}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+
+                            {/* Confirm - Only for pending */}
                             {booking.status === "Pending" && (
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => confirmMutation.mutate(booking.id)}
                                 disabled={confirmMutation.isPending}
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                className="text-green-600"
                                 data-testid={`button-confirm-${booking.id}`}
                               >
                                 {confirmMutation.isPending ? (
@@ -341,6 +541,88 @@ export default function Admin() {
                                 )}
                               </Button>
                             )}
+
+                            {/* Reject - Only for pending */}
+                            {booking.status === "Pending" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => rejectMutation.mutate(booking.id)}
+                                disabled={rejectMutation.isPending}
+                                className="text-red-600"
+                                data-testid={`button-reject-${booking.id}`}
+                              >
+                                {rejectMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <X className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
+
+                            {/* Cancel - For confirmed bookings */}
+                            {booking.status === "Confirmed" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-orange-600"
+                                    data-testid={`button-cancel-${booking.id}`}
+                                  >
+                                    <Ban className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Cancel Booking?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will cancel the booking for {booking.fullName}. The dates will become available for other guests.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => cancelMutation.mutate(booking.id)}
+                                      className="bg-orange-600 hover:bg-orange-700"
+                                    >
+                                      Cancel Booking
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+
+                            {/* Delete - Always available */}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive"
+                                  data-testid={`button-delete-${booking.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Booking?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete the booking for {booking.fullName}. This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteMutation.mutate(booking.id)}
+                                    className="bg-destructive hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -352,6 +634,67 @@ export default function Admin() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Edit Dates Modal */}
+      <Dialog open={showEditModal} onOpenChange={(open) => {
+        setShowEditModal(open);
+        if (!open) setSelectedBooking(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Booking Dates</DialogTitle>
+            <DialogDescription>
+              Update dates for {selectedBooking?.fullName} - Room {selectedBooking?.roomNumber}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-checkin">Check-in Date</Label>
+              <Input
+                id="edit-checkin"
+                type="date"
+                value={editCheckIn}
+                onChange={(e) => setEditCheckIn(e.target.value)}
+                min={format(new Date(), "yyyy-MM-dd")}
+                data-testid="input-edit-checkin"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-checkout">Check-out Date</Label>
+              <Input
+                id="edit-checkout"
+                type="date"
+                value={editCheckOut}
+                onChange={(e) => setEditCheckOut(e.target.value)}
+                min={editCheckIn || format(new Date(), "yyyy-MM-dd")}
+                data-testid="input-edit-checkout"
+              />
+            </div>
+            {editCheckIn && editCheckOut && new Date(editCheckOut) > new Date(editCheckIn) && (
+              <div className="p-3 bg-muted rounded-md">
+                <p className="text-sm">
+                  <strong>New Total:</strong> {differenceInDays(new Date(editCheckOut), new Date(editCheckIn))} nights = {(differenceInDays(new Date(editCheckOut), new Date(editCheckIn)) * DAILY_RATE_MVR).toLocaleString()} MVR
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleUpdateDates}
+              disabled={updateDatesMutation.isPending}
+              data-testid="button-save-dates"
+            >
+              {updateDatesMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

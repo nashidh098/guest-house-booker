@@ -101,6 +101,94 @@ export async function registerRoutes(
     }
   });
 
+  // Reject booking - MUST be before :id route
+  app.patch("/api/bookings/:id/reject", async (req, res) => {
+    try {
+      const booking = await storage.updateBookingStatus(req.params.id, "Rejected");
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+      res.json(booking);
+    } catch (error) {
+      console.error("Error rejecting booking:", error);
+      res.status(500).json({ message: "Failed to reject booking" });
+    }
+  });
+
+  // Cancel booking - MUST be before :id route
+  app.patch("/api/bookings/:id/cancel", async (req, res) => {
+    try {
+      const booking = await storage.updateBookingStatus(req.params.id, "Cancelled");
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+      res.json(booking);
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+      res.status(500).json({ message: "Failed to cancel booking" });
+    }
+  });
+
+  // Update booking dates - MUST be before :id route
+  app.patch("/api/bookings/:id/dates", async (req, res) => {
+    try {
+      const { checkInDate, checkOutDate, totalNights, totalMVR, totalUSD } = req.body;
+      
+      if (!checkInDate || !checkOutDate || !totalNights || !totalMVR || !totalUSD) {
+        return res.status(400).json({ message: "Missing required date fields" });
+      }
+
+      // Get current booking to check room number
+      const existingBooking = await storage.getBooking(req.params.id);
+      if (!existingBooking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      // Check availability for new dates (exclude current booking)
+      const available = await storage.checkRoomAvailability(
+        existingBooking.roomNumber,
+        checkInDate,
+        checkOutDate,
+        req.params.id
+      );
+
+      if (!available) {
+        return res.status(409).json({ message: "Room not available for selected dates" });
+      }
+
+      const booking = await storage.updateBookingDates(
+        req.params.id, 
+        checkInDate, 
+        checkOutDate, 
+        parseInt(totalNights, 10),
+        parseInt(totalMVR, 10),
+        totalUSD
+      );
+      
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+      res.json(booking);
+    } catch (error) {
+      console.error("Error updating booking dates:", error);
+      res.status(500).json({ message: "Failed to update booking dates" });
+    }
+  });
+
+  // Delete booking - MUST be before :id route
+  app.delete("/api/bookings/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteBooking(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+      res.json({ message: "Booking deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+      res.status(500).json({ message: "Failed to delete booking" });
+    }
+  });
+
   // Get single booking - after specific routes
   app.get("/api/bookings/:id", async (req, res) => {
     try {

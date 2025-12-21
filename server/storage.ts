@@ -13,7 +13,9 @@ export interface IStorage {
   getBooking(id: string): Promise<Booking | undefined>;
   createBooking(booking: InsertBooking): Promise<Booking>;
   updateBookingStatus(id: string, status: string): Promise<Booking | undefined>;
-  checkRoomAvailability(roomNumber: number, checkIn: string, checkOut: string): Promise<boolean>;
+  updateBookingDates(id: string, checkIn: string, checkOut: string, totalNights: number, totalMVR: number, totalUSD: string): Promise<Booking | undefined>;
+  deleteBooking(id: string): Promise<boolean>;
+  checkRoomAvailability(roomNumber: number, checkIn: string, checkOut: string, excludeBookingId?: string): Promise<boolean>;
 }
 
 // DatabaseStorage implementation using PostgreSQL
@@ -79,8 +81,32 @@ export class DatabaseStorage implements IStorage {
     return booking || undefined;
   }
 
-  async checkRoomAvailability(roomNumber: number, checkIn: string, checkOut: string): Promise<boolean> {
+  async updateBookingDates(id: string, checkIn: string, checkOut: string, totalNights: number, totalMVR: number, totalUSD: string): Promise<Booking | undefined> {
+    const [booking] = await db
+      .update(bookings)
+      .set({ 
+        checkInDate: checkIn, 
+        checkOutDate: checkOut,
+        totalNights,
+        totalMVR,
+        totalUSD
+      })
+      .where(eq(bookings.id, id))
+      .returning();
+    return booking || undefined;
+  }
+
+  async deleteBooking(id: string): Promise<boolean> {
+    const result = await db
+      .delete(bookings)
+      .where(eq(bookings.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async checkRoomAvailability(roomNumber: number, checkIn: string, checkOut: string, excludeBookingId?: string): Promise<boolean> {
     // Check for conflicts: newCheckin < existingCheckout AND newCheckout > existingCheckin
+    // Only check active bookings (not Cancelled or Rejected)
     const conflictingBookings = await db
       .select()
       .from(bookings)
@@ -88,7 +114,9 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(bookings.roomNumber, roomNumber),
           lt(bookings.checkInDate, checkOut),
-          gt(bookings.checkOutDate, checkIn)
+          gt(bookings.checkOutDate, checkIn),
+          sql`${bookings.status} NOT IN ('Cancelled', 'Rejected')`,
+          excludeBookingId ? sql`${bookings.id} != ${excludeBookingId}` : sql`1=1`
         )
       );
     
