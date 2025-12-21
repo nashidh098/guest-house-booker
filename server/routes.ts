@@ -6,6 +6,7 @@ import fs from "fs";
 import { storage } from "./storage";
 import { insertBookingSchema } from "@shared/schema";
 import { z } from "zod";
+import { sendBookingNotification } from "./telegram";
 
 // Configure multer for file uploads
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -176,6 +177,21 @@ export async function registerRoutes(
       }
 
       const booking = await storage.createBooking(parseResult.data);
+      
+      // Send Telegram notification (don't await - let it run in background)
+      const appUrl = `${req.protocol}://${req.get("host")}`;
+      sendBookingNotification({
+        fullName: booking.fullName,
+        idNumber: booking.idNumber,
+        roomNumber: booking.roomNumber,
+        checkInDate: booking.checkInDate,
+        checkOutDate: booking.checkOutDate,
+        totalNights: booking.totalNights,
+        totalMVR: booking.totalMVR,
+        totalUSD: booking.totalUSD,
+        paymentSlip: booking.paymentSlip,
+      }, appUrl).catch(err => console.error("Telegram notification failed:", err));
+      
       res.status(201).json(booking);
     } catch (error) {
       console.error("Booking error:", error);
