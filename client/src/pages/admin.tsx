@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -71,6 +72,8 @@ export default function Admin() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showSlipModal, setShowSlipModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectNotes, setRejectNotes] = useState("");
   const [editCheckIn, setEditCheckIn] = useState("");
   const [editCheckOut, setEditCheckOut] = useState("");
   const [newBookingsCount, setNewBookingsCount] = useState(0);
@@ -116,11 +119,14 @@ export default function Admin() {
 
   // Reject booking mutation
   const rejectMutation = useMutation({
-    mutationFn: async (bookingId: string) => {
-      return apiRequest("PATCH", `/api/bookings/${bookingId}/reject`);
+    mutationFn: async ({ bookingId, adminNotes }: { bookingId: string; adminNotes: string }) => {
+      return apiRequest("PATCH", `/api/bookings/${bookingId}/reject`, { adminNotes });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      setShowRejectModal(false);
+      setSelectedBooking(null);
+      setRejectNotes("");
       toast({
         title: "Booking Rejected",
         description: "The booking has been rejected and dates are now available",
@@ -134,6 +140,17 @@ export default function Admin() {
       });
     },
   });
+
+  const openRejectModal = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setRejectNotes("");
+    setShowRejectModal(true);
+  };
+
+  const handleReject = () => {
+    if (!selectedBooking) return;
+    rejectMutation.mutate({ bookingId: selectedBooking.id, adminNotes: rejectNotes });
+  };
 
   // Cancel booking mutation
   const cancelMutation = useMutation({
@@ -476,7 +493,14 @@ export default function Admin() {
                           </div>
                         </TableCell>
                         <TableCell data-testid={`badge-status-${booking.id}`}>
-                          {getStatusBadge(booking.status)}
+                          <div className="space-y-1">
+                            {getStatusBadge(booking.status)}
+                            {booking.adminNotes && booking.status === "Rejected" && (
+                              <p className="text-xs text-destructive max-w-[150px] truncate" title={booking.adminNotes}>
+                                {booking.adminNotes}
+                              </p>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -510,6 +534,12 @@ export default function Admin() {
                                     <div className="p-3 bg-muted rounded-md mb-4">
                                       <p className="text-sm font-medium mb-1">Customer Notes:</p>
                                       <p className="text-sm text-muted-foreground">{booking.customerNotes}</p>
+                                    </div>
+                                  )}
+                                  {booking.adminNotes && (
+                                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md mb-4">
+                                      <p className="text-sm font-medium mb-1 text-destructive">Admin Notes:</p>
+                                      <p className="text-sm text-muted-foreground">{booking.adminNotes}</p>
                                     </div>
                                   )}
                                   <div className="mt-2">
@@ -560,16 +590,11 @@ export default function Admin() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => rejectMutation.mutate(booking.id)}
-                                disabled={rejectMutation.isPending}
+                                onClick={() => openRejectModal(booking)}
                                 className="text-red-600"
                                 data-testid={`button-reject-${booking.id}`}
                               >
-                                {rejectMutation.isPending ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <X className="h-4 w-4" />
-                                )}
+                                <X className="h-4 w-4" />
                               </Button>
                             )}
 
@@ -704,6 +729,53 @@ export default function Admin() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rejection Notes Dialog */}
+      <Dialog open={showRejectModal} onOpenChange={(open) => {
+        setShowRejectModal(open);
+        if (!open) {
+          setSelectedBooking(null);
+          setRejectNotes("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Booking</DialogTitle>
+            <DialogDescription>
+              Rejecting booking for {selectedBooking?.fullName} - Room {selectedBooking?.roomNumber}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reject-notes">Reason for Rejection (optional)</Label>
+              <Textarea
+                id="reject-notes"
+                placeholder="e.g., Payment amount incorrect, Invalid payment slip..."
+                value={rejectNotes}
+                onChange={(e) => setRejectNotes(e.target.value)}
+                className="min-h-[100px]"
+                data-testid="input-reject-notes"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRejectModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleReject}
+              disabled={rejectMutation.isPending}
+              data-testid="button-confirm-reject"
+            >
+              {rejectMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Reject Booking
             </Button>
           </DialogFooter>
         </DialogContent>

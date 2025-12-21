@@ -104,7 +104,8 @@ export async function registerRoutes(
   // Reject booking - MUST be before :id route
   app.patch("/api/bookings/:id/reject", async (req, res) => {
     try {
-      const booking = await storage.updateBookingStatus(req.params.id, "Rejected");
+      const { adminNotes } = req.body || {};
+      const booking = await storage.updateBookingStatus(req.params.id, "Rejected", adminNotes);
       if (!booking) {
         return res.status(404).json({ message: "Booking not found" });
       }

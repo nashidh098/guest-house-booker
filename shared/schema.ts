@@ -32,6 +32,7 @@ export const bookings = pgTable("bookings", {
   totalUSD: text("total_usd").notNull(),
   paymentSlip: text("payment_slip"),
   status: text("status").notNull().default("Pending"),
+  adminNotes: text("admin_notes"),
   bookingDate: text("booking_date").notNull(),
 });
 
