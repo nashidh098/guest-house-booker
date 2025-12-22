@@ -517,6 +517,7 @@ export default function Home() {
                           </div>
                         </div>
                       </div>
+                      <p className="text-xs text-muted-foreground mt-3">If there are any extra charges, payment will be made at checkout.</p>
                     </CardContent>
                   </Card>
                 )}
