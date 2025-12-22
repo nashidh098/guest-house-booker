@@ -22,6 +22,19 @@ export default function Invoice() {
     queryKey: ["/api/bookings", id],
   });
 
+  const parseRoomNumbers = (roomNumbers: string | null | undefined): number[] | null => {
+    if (!roomNumbers) return null;
+    try {
+      const parsed = JSON.parse(roomNumbers);
+      if (Array.isArray(parsed) && parsed.every(r => typeof r === 'number')) {
+        return parsed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   const downloadPDF = async () => {
     if (!invoiceRef.current) return;
 
@@ -62,8 +75,9 @@ export default function Invoice() {
   const shareInvoice = async () => {
     if (!booking) return;
 
-    const roomsText = booking.roomNumbers 
-      ? `Rooms ${(JSON.parse(booking.roomNumbers) as number[]).join(', ')}`
+    const parsedRooms = parseRoomNumbers(booking.roomNumbers);
+    const roomsText = parsedRooms 
+      ? `Rooms ${parsedRooms.join(', ')}`
       : `Room ${booking.roomNumber}`;
     
     const shareData = {
@@ -219,12 +233,14 @@ export default function Invoice() {
                   </thead>
                   <tbody className="divide-y">
                     <tr>
-                      <td className="p-3 text-sm">Room{booking.roomNumbers ? 's' : ''}</td>
+                      <td className="p-3 text-sm">Room{parseRoomNumbers(booking.roomNumbers) ? 's' : ''}</td>
                       <td className="p-3 text-sm text-right font-medium" data-testid="text-room-number">
-                        {booking.roomNumbers 
-                          ? (JSON.parse(booking.roomNumbers) as number[]).map(r => `Room ${r}`).join(', ')
-                          : `Room ${booking.roomNumber}`
-                        }
+                        {(() => {
+                          const rooms = parseRoomNumbers(booking.roomNumbers);
+                          return rooms 
+                            ? rooms.map(r => `Room ${r}`).join(', ')
+                            : `Room ${booking.roomNumber}`;
+                        })()}
                       </td>
                     </tr>
                     <tr>

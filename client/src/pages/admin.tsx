@@ -69,6 +69,19 @@ interface BookingStats {
   todayCheckIns: number;
 }
 
+const parseRoomNumbers = (roomNumbers: string | null | undefined): number[] | null => {
+  if (!roomNumbers) return null;
+  try {
+    const parsed = JSON.parse(roomNumbers);
+    if (Array.isArray(parsed) && parsed.every(r => typeof r === 'number')) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 export default function Admin() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -602,10 +615,12 @@ export default function Admin() {
                         <TableCell>
                           <div>
                             <p className="font-medium">
-                              {booking.roomNumbers 
-                                ? (JSON.parse(booking.roomNumbers) as number[]).map(r => `Room ${r}`).join(', ')
-                                : `Room ${booking.roomNumber}`
-                              }
+                              {(() => {
+                                const rooms = parseRoomNumbers(booking.roomNumbers);
+                                return rooms 
+                                  ? rooms.map(r => `Room ${r}`).join(', ')
+                                  : `Room ${booking.roomNumber}`;
+                              })()}
                             </p>
                             {booking.extraBed && (
                               <p className="text-xs text-muted-foreground">+ Extra bed</p>
@@ -980,10 +995,12 @@ export default function Admin() {
           <DialogHeader>
             <DialogTitle>Edit Booking Dates</DialogTitle>
             <DialogDescription>
-              Update dates for {selectedBooking?.fullName} - {selectedBooking?.roomNumbers 
-                ? `Rooms ${(JSON.parse(selectedBooking.roomNumbers) as number[]).join(', ')}`
-                : `Room ${selectedBooking?.roomNumber}`
-              }
+              Update dates for {selectedBooking?.fullName} - {(() => {
+                const rooms = parseRoomNumbers(selectedBooking?.roomNumbers);
+                return rooms 
+                  ? `Rooms ${rooms.join(', ')}`
+                  : `Room ${selectedBooking?.roomNumber}`;
+              })()}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1047,10 +1064,12 @@ export default function Admin() {
           <DialogHeader>
             <DialogTitle>Reject Booking</DialogTitle>
             <DialogDescription>
-              Rejecting booking for {selectedBooking?.fullName} - {selectedBooking?.roomNumbers 
-                ? `Rooms ${(JSON.parse(selectedBooking.roomNumbers) as number[]).join(', ')}`
-                : `Room ${selectedBooking?.roomNumber}`
-              }
+              Rejecting booking for {selectedBooking?.fullName} - {(() => {
+                const rooms = parseRoomNumbers(selectedBooking?.roomNumbers);
+                return rooms 
+                  ? `Rooms ${rooms.join(', ')}`
+                  : `Room ${selectedBooking?.roomNumber}`;
+              })()}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

@@ -366,6 +366,19 @@ export async function registerRoutes(
         bookingDate: new Date().toISOString().split("T")[0],
       };
 
+      // Validate roomNumbers is valid JSON array if provided
+      let parsedRoomNumbers: number[] | null = null;
+      if (roomNumbers) {
+        try {
+          parsedRoomNumbers = JSON.parse(roomNumbers);
+          if (!Array.isArray(parsedRoomNumbers) || !parsedRoomNumbers.every(r => typeof r === 'number' && r >= 1 && r <= 10)) {
+            return res.status(400).json({ message: "Invalid room numbers format" });
+          }
+        } catch {
+          return res.status(400).json({ message: "Invalid room numbers JSON" });
+        }
+      }
+
       // Validate input using Zod schema
       const validationSchema = z.object({
         fullName: z.string().min(2, "Full name is required"),
@@ -397,7 +410,7 @@ export async function registerRoutes(
       }
 
       // Check availability for all selected rooms
-      const selectedRooms: number[] = roomNumbers ? JSON.parse(roomNumbers) : [parseInt(roomNumber, 10)];
+      const selectedRooms: number[] = parsedRoomNumbers || [parseInt(roomNumber, 10)];
       for (const room of selectedRooms) {
         const available = await storage.checkRoomAvailability(
           room,
