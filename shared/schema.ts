@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, date } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, date, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -25,6 +25,8 @@ export const bookings = pgTable("bookings", {
   phoneNumber: text("phone_number"),
   customerNotes: text("customer_notes"),
   roomNumber: integer("room_number").notNull(),
+  roomNumbers: text("room_numbers"), // JSON array of room numbers for multi-room booking
+  extraBed: boolean("extra_bed").default(false),
   checkInDate: text("check_in_date").notNull(),
   checkOutDate: text("check_out_date").notNull(),
   totalNights: integer("total_nights").notNull(),
@@ -42,6 +44,8 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
   fullName: z.string().min(2, "Full name is required"),
   idNumber: z.string().min(3, "ID/Passport number is required"),
   roomNumber: z.number().min(1).max(4),
+  roomNumbers: z.string().optional(),
+  extraBed: z.boolean().optional(),
   checkInDate: z.string().min(1, "Check-in date is required"),
   checkOutDate: z.string().min(1, "Check-out date is required"),
 });
