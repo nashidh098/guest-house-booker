@@ -108,6 +108,7 @@ export type GalleryPhoto = typeof galleryPhotos.$inferSelect;
 
 // Constants
 export const DAILY_RATE_MVR = 600;
+export const EXTRA_BED_CHARGE_MVR = 100;
 export const USD_EXCHANGE_RATE = 20; // 600 MVR = $30 USD
 
 // Default gallery images (used when database is empty)

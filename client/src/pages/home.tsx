@@ -19,14 +19,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ROOMS, BANK_ACCOUNTS, DAILY_RATE_MVR, USD_EXCHANGE_RATE, type Booking, type GalleryPhoto, DEFAULT_GALLERY_IMAGES } from "@shared/schema";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ROOMS, BANK_ACCOUNTS, DAILY_RATE_MVR, EXTRA_BED_CHARGE_MVR, USD_EXCHANGE_RATE, type Booking, type GalleryPhoto, DEFAULT_GALLERY_IMAGES } from "@shared/schema";
 
 const bookingFormSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
   idNumber: z.string().min(3, "ID/Passport number is required"),
   phoneNumber: z.string().min(7, "Phone number is required"),
   customerNotes: z.string().optional(),
-  roomNumber: z.string().min(1, "Please select a room"),
+  roomNumbers: z.array(z.number()).min(1, "Please select at least one room"),
+  extraBed: z.boolean().optional(),
   checkInDate: z.string().min(1, "Check-in date is required"),
   checkOutDate: z.string().min(1, "Check-out date is required"),
 });
@@ -65,7 +67,8 @@ export default function Home() {
       idNumber: "",
       phoneNumber: "",
       customerNotes: "",
-      roomNumber: "",
+      roomNumbers: [],
+      extraBed: false,
       checkInDate: "",
       checkOutDate: "",
     },
@@ -73,56 +76,70 @@ export default function Home() {
 
   const watchCheckIn = form.watch("checkInDate");
   const watchCheckOut = form.watch("checkOutDate");
-  const watchRoom = form.watch("roomNumber");
+  const watchRooms = form.watch("roomNumbers");
+  const watchExtraBed = form.watch("extraBed");
 
   // Calculate pricing
   const calculatePricing = () => {
     if (!watchCheckIn || !watchCheckOut) {
-      return { nights: 0, totalMVR: 0, totalUSD: "0.00" };
+      return { nights: 0, totalMVR: 0, totalUSD: "0.00", roomCount: 0, extraBedCharge: 0 };
     }
     const checkIn = parseISO(watchCheckIn);
     const checkOut = parseISO(watchCheckOut);
     const nights = differenceInDays(checkOut, checkIn);
     if (nights <= 0) {
-      return { nights: 0, totalMVR: 0, totalUSD: "0.00" };
+      return { nights: 0, totalMVR: 0, totalUSD: "0.00", roomCount: 0, extraBedCharge: 0 };
     }
-    const totalMVR = nights * DAILY_RATE_MVR;
+    const roomCount = watchRooms?.length || 1;
+    const extraBedCharge = watchExtraBed ? EXTRA_BED_CHARGE_MVR : 0;
+    const totalMVR = (nights * DAILY_RATE_MVR * roomCount) + extraBedCharge;
     const totalUSD = (totalMVR / USD_EXCHANGE_RATE).toFixed(2);
-    return { nights, totalMVR, totalUSD };
+    return { nights, totalMVR, totalUSD, roomCount, extraBedCharge };
   };
 
   const pricing = calculatePricing();
 
-  // Check availability query
+  // Check availability for all selected rooms
   const { refetch: checkAvailability, isFetching: checkingAvailability } = useQuery({
-    queryKey: ["/api/bookings/check-availability", watchRoom, watchCheckIn, watchCheckOut],
+    queryKey: ["/api/bookings/check-availability", watchRooms, watchCheckIn, watchCheckOut],
     queryFn: async () => {
-      if (!watchRoom || !watchCheckIn || !watchCheckOut) return { available: true };
-      const res = await fetch(`/api/bookings/check-availability?roomNumber=${watchRoom}&checkIn=${watchCheckIn}&checkOut=${watchCheckOut}`);
-      return res.json();
+      if (!watchRooms?.length || !watchCheckIn || !watchCheckOut) return { available: true, unavailableRooms: [] };
+      
+      // Check each room
+      const unavailableRooms: number[] = [];
+      for (const roomNumber of watchRooms) {
+        const res = await fetch(`/api/bookings/check-availability?roomNumber=${roomNumber}&checkIn=${watchCheckIn}&checkOut=${watchCheckOut}`);
+        const data = await res.json();
+        if (!data.available) {
+          unavailableRooms.push(roomNumber);
+        }
+      }
+      return { available: unavailableRooms.length === 0, unavailableRooms };
     },
     enabled: false,
   });
 
-  // Check availability when dates or room change
+  // Check availability when dates or rooms change
   const handleAvailabilityCheck = async () => {
-    if (watchRoom && watchCheckIn && watchCheckOut && pricing.nights > 0) {
+    if (watchRooms?.length && watchCheckIn && watchCheckOut && pricing.nights > 0) {
       const result = await checkAvailability();
       if (result.data && !result.data.available) {
         setIsRoomUnavailable(true);
-        setAvailabilityMessage("Not Available - Room already booked for selected dates");
+        const roomList = result.data.unavailableRooms.map((r: number) => `Room ${r}`).join(", ");
+        setAvailabilityMessage(`Not Available - ${roomList} already booked for selected dates`);
       } else if (result.data && result.data.available) {
         setIsRoomUnavailable(false);
-        setAvailabilityMessage("Available - Room is available for your selected dates");
+        const roomCount = watchRooms.length;
+        setAvailabilityMessage(`Available - ${roomCount} room${roomCount > 1 ? 's' : ''} available for your selected dates`);
       }
     } else {
       setAvailabilityMessage(null);
     }
   };
 
-  // Auto-check availability when room and dates are selected
+  // Auto-check availability when rooms and dates are selected
   useEffect(() => {
-    if (watchRoom && watchCheckIn && watchCheckOut) {
+    if (watchRooms?.length && watchCheckIn && watchCheckOut) {
       const checkIn = parseISO(watchCheckIn);
       const checkOut = parseISO(watchCheckOut);
       const nights = differenceInDays(checkOut, checkIn);
@@ -130,7 +147,7 @@ export default function Home() {
         handleAvailabilityCheck();
       }
     }
-  }, [watchRoom, watchCheckIn, watchCheckOut]);
+  }, [watchRooms, watchCheckIn, watchCheckOut]);
 
   // Booking mutation
   const bookingMutation = useMutation({
@@ -221,7 +238,9 @@ export default function Home() {
     formData.append("idNumber", values.idNumber);
     formData.append("phoneNumber", values.phoneNumber);
     formData.append("customerNotes", values.customerNotes || "");
-    formData.append("roomNumber", values.roomNumber);
+    formData.append("roomNumber", values.roomNumbers[0].toString()); // Primary room for backward compatibility
+    formData.append("roomNumbers", JSON.stringify(values.roomNumbers)); // All selected rooms
+    formData.append("extraBed", values.extraBed ? "true" : "false");
     formData.append("checkInDate", values.checkInDate);
     formData.append("checkOutDate", values.checkOutDate);
     formData.append("totalNights", pricing.nights.toString());
@@ -388,31 +407,59 @@ export default function Home() {
 
                   <FormField
                     control={form.control}
-                    name="roomNumber"
+                    name="roomNumbers"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Select Room</FormLabel>
-                        <Select 
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            setTimeout(handleAvailabilityCheck, 100);
-                          }} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-room">
-                              <SelectValue placeholder="Select a room" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {ROOMS.map((room) => (
-                              <SelectItem key={room.number} value={room.number.toString()}>
+                        <FormLabel>Select Room(s)</FormLabel>
+                        <div className="flex flex-wrap gap-4 pt-2">
+                          {ROOMS.map((room) => (
+                            <div key={room.number} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`room-${room.number}`}
+                                checked={field.value?.includes(room.number)}
+                                onCheckedChange={(checked) => {
+                                  const currentRooms = field.value || [];
+                                  if (checked) {
+                                    field.onChange([...currentRooms, room.number].sort());
+                                  } else {
+                                    field.onChange(currentRooms.filter((r: number) => r !== room.number));
+                                  }
+                                  setTimeout(handleAvailabilityCheck, 100);
+                                }}
+                                data-testid={`checkbox-room-${room.number}`}
+                              />
+                              <Label htmlFor={`room-${room.number}`} className="cursor-pointer">
                                 {room.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Extra Bed Option */}
+                  <FormField
+                    control={form.control}
+                    name="extraBed"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-extra-bed"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="cursor-pointer">
+                            Extra Bed (+{EXTRA_BED_CHARGE_MVR} MVR)
+                          </FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Add an extra bed to your room
+                          </p>
+                        </div>
                       </FormItem>
                     )}
                   />
@@ -497,14 +544,19 @@ export default function Home() {
                 </div>
 
                 {/* Pricing Card */}
-                {pricing.nights > 0 && (
+                {pricing.nights > 0 && watchRooms?.length > 0 && (
                   <Card className="bg-primary/5 border-l-4 border-l-primary">
                     <CardContent className="pt-4">
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">Duration</p>
-                          <p className="font-semibold" data-testid="text-nights">{pricing.nights} Night{pricing.nights > 1 ? 's' : ''}</p>
-                          <p className="text-xs text-muted-foreground">{DAILY_RATE_MVR} MVR per night</p>
+                          <p className="text-sm text-muted-foreground">Booking Summary</p>
+                          <p className="font-semibold" data-testid="text-nights">
+                            {pricing.roomCount} Room{pricing.roomCount > 1 ? 's' : ''} x {pricing.nights} Night{pricing.nights > 1 ? 's' : ''}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{DAILY_RATE_MVR} MVR per room per night</p>
+                          {pricing.extraBedCharge > 0 && (
+                            <p className="text-xs text-muted-foreground">+ Extra bed: {EXTRA_BED_CHARGE_MVR} MVR</p>
+                          )}
                         </div>
                         <div className="flex gap-6">
                           <div className="text-center">

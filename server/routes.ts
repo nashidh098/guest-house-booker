@@ -345,21 +345,23 @@ export async function registerRoutes(
   // Create booking with validation
   app.post("/api/bookings", upload.single("paymentSlip"), async (req, res) => {
     try {
-      const { fullName, idNumber, phoneNumber, customerNotes, roomNumber, checkInDate, checkOutDate, totalNights, totalMVR, totalUSD } = req.body;
+      const { fullName, idNumber, phoneNumber, customerNotes, roomNumber, roomNumbers, extraBed, checkInDate, checkOutDate, totalNights, totalMVR, totalUSD } = req.body;
       
       // Build booking data
       const bookingData = {
         fullName,
         idNumber,
-        phoneNumber: phoneNumber || null,
-        customerNotes: customerNotes || null,
+        phoneNumber: phoneNumber || undefined,
+        customerNotes: customerNotes || undefined,
         roomNumber: parseInt(roomNumber, 10),
+        roomNumbers: roomNumbers || undefined, // JSON array string of room numbers
+        extraBed: extraBed === "true" || extraBed === true,
         checkInDate,
         checkOutDate,
         totalNights: parseInt(totalNights, 10),
         totalMVR: parseInt(totalMVR, 10),
         totalUSD,
-        paymentSlip: req.file?.filename || null,
+        paymentSlip: req.file?.filename || undefined,
         status: "Pending",
         bookingDate: new Date().toISOString().split("T")[0],
       };
@@ -368,15 +370,17 @@ export async function registerRoutes(
       const validationSchema = z.object({
         fullName: z.string().min(2, "Full name is required"),
         idNumber: z.string().min(3, "ID/Passport number is required"),
-        phoneNumber: z.string().nullable(),
-        customerNotes: z.string().nullable(),
+        phoneNumber: z.string().optional(),
+        customerNotes: z.string().optional(),
         roomNumber: z.number().min(1).max(10),
+        roomNumbers: z.string().optional(),
+        extraBed: z.boolean().optional(),
         checkInDate: z.string().min(1, "Check-in date is required"),
         checkOutDate: z.string().min(1, "Check-out date is required"),
         totalNights: z.number().min(1, "Must stay at least 1 night"),
         totalMVR: z.number().min(1),
         totalUSD: z.string(),
-        paymentSlip: z.string().nullable(),
+        paymentSlip: z.string().optional(),
         status: z.string(),
         bookingDate: z.string(),
       });
@@ -392,19 +396,22 @@ export async function registerRoutes(
         return res.status(400).json({ message: `Validation failed: ${errors}` });
       }
 
-      // Check room availability before booking
-      const available = await storage.checkRoomAvailability(
-        bookingData.roomNumber,
-        bookingData.checkInDate,
-        bookingData.checkOutDate
-      );
-
-      if (!available) {
-        // Delete uploaded file if booking fails
-        if (req.file) {
-          fs.unlinkSync(path.join(uploadsDir, req.file.filename));
+      // Check availability for all selected rooms
+      const selectedRooms: number[] = roomNumbers ? JSON.parse(roomNumbers) : [parseInt(roomNumber, 10)];
+      for (const room of selectedRooms) {
+        const available = await storage.checkRoomAvailability(
+          room,
+          bookingData.checkInDate,
+          bookingData.checkOutDate
+        );
+        
+        if (!available) {
+          // Delete uploaded file if booking fails
+          if (req.file) {
+            fs.unlinkSync(path.join(uploadsDir, req.file.filename));
+          }
+          return res.status(409).json({ message: `Room ${room} already booked for selected dates` });
         }
-        return res.status(409).json({ message: "Room already booked for selected dates" });
       }
 
       const booking = await storage.createBooking(parseResult.data);
