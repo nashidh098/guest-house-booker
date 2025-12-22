@@ -72,9 +72,9 @@ The application runs with `npm run dev` which starts:
 - **Contact**: 9994026
 
 ## Bank Account Details
-- **Bank of Maldives**: MVR 7777777776666667 / USD 7777777776666666
-- **Maldives Islamic Bank**: MVR 99999999888999889 / USD 999988887777888888
-- Account Name: MOONLIGHT INN
+- **Bank of Maldives (USD)**: 7730000528706 - Account Name: MOHAED I WAHEED
+- **Bank of Maldives (MVR)**: 7770000168454 - Account Name: W COLLECTION
+- **Maldives Islamic Bank (MVR)**: 90501400043381000 - Account Name: W COLLECTION
 
 ## Pricing
 - Daily room rate: 600 MVR / $30 USD per night

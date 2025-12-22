@@ -64,23 +64,29 @@ export const ROOMS: Room[] = [
 // Bank account details
 export interface BankAccount {
   bankName: string;
-  mvrAccount: string;
-  usdAccount: string;
+  mvrAccount: string | null;
+  usdAccount: string | null;
   accountName: string;
 }
 
 export const BANK_ACCOUNTS: BankAccount[] = [
   {
-    bankName: "Bank of Maldives",
-    mvrAccount: "7777777776666667",
-    usdAccount: "7777777776666666",
-    accountName: "MOONLIGHT INN",
+    bankName: "Bank of Maldives (USD)",
+    mvrAccount: null,
+    usdAccount: "7730000528706",
+    accountName: "MOHAED I WAHEED",
   },
   {
-    bankName: "Maldives Islamic Bank",
-    mvrAccount: "99999999888999889",
-    usdAccount: "999988887777888888",
-    accountName: "MOONLIGHT INN",
+    bankName: "Bank of Maldives (MVR)",
+    mvrAccount: "7770000168454",
+    usdAccount: null,
+    accountName: "W COLLECTION",
+  },
+  {
+    bankName: "Maldives Islamic Bank (MVR)",
+    mvrAccount: "90501400043381000",
+    usdAccount: null,
+    accountName: "W COLLECTION",
   },
 ];
 

@@ -539,47 +539,51 @@ export default function Home() {
                         </AccordionTrigger>
                         <AccordionContent>
                           <div className="space-y-4 pt-2">
-                            <div className="p-3 bg-muted rounded-lg">
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm font-medium">MVR Account</span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => copyToClipboard(bank.mvrAccount, `${index}-mvr`)}
-                                  data-testid={`button-copy-mvr-${index}`}
-                                >
-                                  {copiedAccount === `${index}-mvr` ? (
-                                    <Check className="h-4 w-4 text-green-600" />
-                                  ) : (
-                                    <Copy className="h-4 w-4" />
-                                  )}
-                                </Button>
+                            {bank.mvrAccount && (
+                              <div className="p-3 bg-muted rounded-lg">
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm font-medium">MVR Account</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => copyToClipboard(bank.mvrAccount!, `${index}-mvr`)}
+                                    data-testid={`button-copy-mvr-${index}`}
+                                  >
+                                    {copiedAccount === `${index}-mvr` ? (
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <Copy className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </div>
+                                <p className="font-mono text-lg" data-testid={`text-mvr-account-${index}`}>{bank.mvrAccount}</p>
+                                <p className="text-sm text-muted-foreground">Account Name: {bank.accountName}</p>
                               </div>
-                              <p className="font-mono text-lg" data-testid={`text-mvr-account-${index}`}>{bank.mvrAccount}</p>
-                              <p className="text-sm text-muted-foreground">Account Name: {bank.accountName}</p>
-                            </div>
+                            )}
 
-                            <div className="p-3 bg-muted rounded-lg">
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm font-medium">USD Account</span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => copyToClipboard(bank.usdAccount, `${index}-usd`)}
-                                  data-testid={`button-copy-usd-${index}`}
-                                >
-                                  {copiedAccount === `${index}-usd` ? (
-                                    <Check className="h-4 w-4 text-green-600" />
-                                  ) : (
-                                    <Copy className="h-4 w-4" />
-                                  )}
-                                </Button>
+                            {bank.usdAccount && (
+                              <div className="p-3 bg-muted rounded-lg">
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm font-medium">USD Account</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => copyToClipboard(bank.usdAccount!, `${index}-usd`)}
+                                    data-testid={`button-copy-usd-${index}`}
+                                  >
+                                    {copiedAccount === `${index}-usd` ? (
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <Copy className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </div>
+                                <p className="font-mono text-lg" data-testid={`text-usd-account-${index}`}>{bank.usdAccount}</p>
+                                <p className="text-sm text-muted-foreground">Account Name: {bank.accountName}</p>
                               </div>
-                              <p className="font-mono text-lg" data-testid={`text-usd-account-${index}`}>{bank.usdAccount}</p>
-                              <p className="text-sm text-muted-foreground">Account Name: {bank.accountName}</p>
-                            </div>
+                            )}
                           </div>
                         </AccordionContent>
                       </AccordionItem>
