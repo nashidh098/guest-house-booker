@@ -10,10 +10,14 @@ import { sendBookingNotification } from "./telegram";
 
 // Configure multer for file uploads
 const uploadsDir = path.join(process.cwd(), "uploads");
+const galleryUploadsDir = path.join(process.cwd(), "uploads", "gallery");
 
-// Ensure uploads directory exists
+// Ensure uploads directories exist
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+if (!fs.existsSync(galleryUploadsDir)) {
+  fs.mkdirSync(galleryUploadsDir, { recursive: true });
 }
 
 const multerStorage = multer.diskStorage({
@@ -37,6 +41,31 @@ const upload = multer({
       return cb(null, true);
     }
     cb(new Error("Only images (jpeg, jpg, png) and PDF files are allowed"));
+  },
+});
+
+// Gallery-specific multer configuration
+const galleryStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, galleryUploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const galleryUpload = multer({
+  storage: galleryStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for gallery images
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (extname && mimetype) {
+      return cb(null, true);
+    }
+    cb(new Error("Only images (jpeg, jpg, png, webp) are allowed"));
   },
 });
 
@@ -226,19 +255,21 @@ export async function registerRoutes(
     }
   });
 
-  // Add gallery photo
-  app.post("/api/gallery", async (req, res) => {
+  // Add gallery photo (file upload)
+  app.post("/api/gallery", galleryUpload.single("image"), async (req, res) => {
     try {
-      const { imageUrl, altText, displayOrder } = req.body;
-      
-      if (!imageUrl || !altText) {
-        return res.status(400).json({ message: "Image URL and alt text are required" });
+      if (!req.file) {
+        return res.status(400).json({ message: "Image file is required" });
       }
+
+      const altText = req.body.altText || "Gallery image";
+      const displayOrder = parseInt(req.body.displayOrder || "0", 10);
+      const imageUrl = `/uploads/gallery/${req.file.filename}`;
 
       const photo = await storage.addGalleryPhoto({
         imageUrl,
         altText,
-        displayOrder: displayOrder || 0,
+        displayOrder,
       });
       
       res.status(201).json(photo);
@@ -248,13 +279,30 @@ export async function registerRoutes(
     }
   });
 
-  // Delete gallery photo
+  // Delete gallery photo (with file cleanup)
   app.delete("/api/gallery/:id", async (req, res) => {
     try {
+      // First get the photo to find the file path
+      const photo = await storage.getGalleryPhotoById(req.params.id);
+      if (!photo) {
+        return res.status(404).json({ message: "Photo not found" });
+      }
+
+      // Delete from database
       const deleted = await storage.deleteGalleryPhoto(req.params.id);
       if (!deleted) {
         return res.status(404).json({ message: "Photo not found" });
       }
+
+      // Delete file from disk if it's a local upload
+      if (photo.imageUrl.startsWith("/uploads/gallery/")) {
+        const filename = photo.imageUrl.replace("/uploads/gallery/", "");
+        const filePath = path.join(galleryUploadsDir, filename);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+
       res.json({ message: "Photo deleted successfully" });
     } catch (error) {
       console.error("Error deleting gallery photo:", error);
