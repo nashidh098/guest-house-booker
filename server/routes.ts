@@ -345,7 +345,7 @@ export async function registerRoutes(
   // Create booking with validation
   app.post("/api/bookings", upload.single("paymentSlip"), async (req, res) => {
     try {
-      const { fullName, idNumber, phoneNumber, customerNotes, roomNumber, roomNumbers, extraBed, checkInDate, checkOutDate, totalNights, totalMVR, totalUSD } = req.body;
+      const { fullName, idNumber, phoneNumber, customerNotes, roomNumber, roomNumbers, extraBed, extraBeds, checkInDate, checkOutDate, totalNights, totalMVR, totalUSD } = req.body;
       
       // Build booking data
       const bookingData = {
@@ -356,6 +356,7 @@ export async function registerRoutes(
         roomNumber: parseInt(roomNumber, 10),
         roomNumbers: roomNumbers || undefined, // JSON array string of room numbers
         extraBed: extraBed === "true" || extraBed === true,
+        extraBeds: extraBeds || undefined, // JSON array string of room numbers with extra beds
         checkInDate,
         checkOutDate,
         totalNights: parseInt(totalNights, 10),
@@ -379,6 +380,22 @@ export async function registerRoutes(
         }
       }
 
+      // Validate extraBeds is valid JSON array if provided
+      if (extraBeds) {
+        try {
+          const parsedExtraBeds = JSON.parse(extraBeds);
+          if (!Array.isArray(parsedExtraBeds) || !parsedExtraBeds.every(r => typeof r === 'number' && r >= 1 && r <= 10)) {
+            return res.status(400).json({ message: "Invalid extra beds format" });
+          }
+          // Ensure extra beds are only for selected rooms
+          if (parsedRoomNumbers && !parsedExtraBeds.every(r => parsedRoomNumbers!.includes(r))) {
+            return res.status(400).json({ message: "Extra beds can only be added to selected rooms" });
+          }
+        } catch {
+          return res.status(400).json({ message: "Invalid extra beds JSON" });
+        }
+      }
+
       // Validate input using Zod schema
       const validationSchema = z.object({
         fullName: z.string().min(2, "Full name is required"),
@@ -388,6 +405,7 @@ export async function registerRoutes(
         roomNumber: z.number().min(1).max(10),
         roomNumbers: z.string().optional(),
         extraBed: z.boolean().optional(),
+        extraBeds: z.string().optional(),
         checkInDate: z.string().min(1, "Check-in date is required"),
         checkOutDate: z.string().min(1, "Check-out date is required"),
         totalNights: z.number().min(1, "Must stay at least 1 night"),

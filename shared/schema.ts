@@ -26,7 +26,8 @@ export const bookings = pgTable("bookings", {
   customerNotes: text("customer_notes"),
   roomNumber: integer("room_number").notNull(),
   roomNumbers: text("room_numbers"), // JSON array of room numbers for multi-room booking
-  extraBed: boolean("extra_bed").default(false),
+  extraBed: boolean("extra_bed").default(false), // Legacy single extra bed flag
+  extraBeds: text("extra_beds"), // JSON array of room numbers that have extra beds
   checkInDate: text("check_in_date").notNull(),
   checkOutDate: text("check_out_date").notNull(),
   totalNights: integer("total_nights").notNull(),
@@ -46,6 +47,7 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
   roomNumber: z.number().min(1).max(4),
   roomNumbers: z.string().optional(),
   extraBed: z.boolean().optional(),
+  extraBeds: z.string().optional(), // JSON array of room numbers with extra beds
   checkInDate: z.string().min(1, "Check-in date is required"),
   checkOutDate: z.string().min(1, "Check-out date is required"),
 });

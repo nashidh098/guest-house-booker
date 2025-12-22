@@ -82,6 +82,19 @@ const parseRoomNumbers = (roomNumbers: string | null | undefined): number[] | nu
   }
 };
 
+const parseExtraBeds = (extraBeds: string | null | undefined): number[] | null => {
+  if (!extraBeds) return null;
+  try {
+    const parsed = JSON.parse(extraBeds);
+    if (Array.isArray(parsed) && parsed.every(r => typeof r === 'number')) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 export default function Admin() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -622,9 +635,19 @@ export default function Admin() {
                                   : `Room ${booking.roomNumber}`;
                               })()}
                             </p>
-                            {booking.extraBed && (
-                              <p className="text-xs text-muted-foreground">+ Extra bed</p>
-                            )}
+                            {(() => {
+                              const extraBedRooms = parseExtraBeds(booking.extraBeds);
+                              if (extraBedRooms && extraBedRooms.length > 0) {
+                                return (
+                                  <p className="text-xs text-muted-foreground">
+                                    + {extraBedRooms.length} extra bed{extraBedRooms.length > 1 ? 's' : ''} (Room{extraBedRooms.length > 1 ? 's' : ''} {extraBedRooms.join(', ')})
+                                  </p>
+                                );
+                              } else if (booking.extraBed) {
+                                return <p className="text-xs text-muted-foreground">+ Extra bed</p>;
+                              }
+                              return null;
+                            })()}
                           </div>
                         </TableCell>
                         <TableCell>{formatDate(booking.checkInDate)}</TableCell>

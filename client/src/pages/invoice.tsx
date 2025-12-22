@@ -35,6 +35,19 @@ export default function Invoice() {
     }
   };
 
+  const parseExtraBeds = (extraBeds: string | null | undefined): number[] | null => {
+    if (!extraBeds) return null;
+    try {
+      const parsed = JSON.parse(extraBeds);
+      if (Array.isArray(parsed) && parsed.every(r => typeof r === 'number')) {
+        return parsed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   const downloadPDF = async () => {
     if (!invoiceRef.current) return;
 
@@ -259,12 +272,27 @@ export default function Invoice() {
                       <td className="p-3 text-sm">Price per Room per Night</td>
                       <td className="p-3 text-sm text-right">{DAILY_RATE_MVR} MVR</td>
                     </tr>
-                    {booking.extraBed && (
-                      <tr>
-                        <td className="p-3 text-sm">Extra Bed</td>
-                        <td className="p-3 text-sm text-right">{EXTRA_BED_CHARGE_MVR} MVR</td>
-                      </tr>
-                    )}
+                    {(() => {
+                      const extraBedRooms = parseExtraBeds(booking.extraBeds);
+                      if (extraBedRooms && extraBedRooms.length > 0) {
+                        return (
+                          <tr>
+                            <td className="p-3 text-sm">
+                              Extra Bed{extraBedRooms.length > 1 ? 's' : ''} (Room{extraBedRooms.length > 1 ? 's' : ''} {extraBedRooms.join(', ')})
+                            </td>
+                            <td className="p-3 text-sm text-right">{extraBedRooms.length * EXTRA_BED_CHARGE_MVR} MVR</td>
+                          </tr>
+                        );
+                      } else if (booking.extraBed) {
+                        return (
+                          <tr>
+                            <td className="p-3 text-sm">Extra Bed</td>
+                            <td className="p-3 text-sm text-right">{EXTRA_BED_CHARGE_MVR} MVR</td>
+                          </tr>
+                        );
+                      }
+                      return null;
+                    })()}
                   </tbody>
                 </table>
               </div>

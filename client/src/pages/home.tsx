@@ -28,7 +28,7 @@ const bookingFormSchema = z.object({
   phoneNumber: z.string().min(7, "Phone number is required"),
   customerNotes: z.string().optional(),
   roomNumbers: z.array(z.number()).min(1, "Please select at least one room"),
-  extraBed: z.boolean().optional(),
+  extraBeds: z.array(z.number()).optional(), // Room numbers that have extra beds
   checkInDate: z.string().min(1, "Check-in date is required"),
   checkOutDate: z.string().min(1, "Check-out date is required"),
 });
@@ -68,7 +68,7 @@ export default function Home() {
       phoneNumber: "",
       customerNotes: "",
       roomNumbers: [],
-      extraBed: false,
+      extraBeds: [],
       checkInDate: "",
       checkOutDate: "",
     },
@@ -77,24 +77,25 @@ export default function Home() {
   const watchCheckIn = form.watch("checkInDate");
   const watchCheckOut = form.watch("checkOutDate");
   const watchRooms = form.watch("roomNumbers");
-  const watchExtraBed = form.watch("extraBed");
+  const watchExtraBeds = form.watch("extraBeds") || [];
 
   // Calculate pricing
   const calculatePricing = () => {
     if (!watchCheckIn || !watchCheckOut) {
-      return { nights: 0, totalMVR: 0, totalUSD: "0.00", roomCount: 0, extraBedCharge: 0 };
+      return { nights: 0, totalMVR: 0, totalUSD: "0.00", roomCount: 0, extraBedCount: 0, extraBedCharge: 0 };
     }
     const checkIn = parseISO(watchCheckIn);
     const checkOut = parseISO(watchCheckOut);
     const nights = differenceInDays(checkOut, checkIn);
     if (nights <= 0) {
-      return { nights: 0, totalMVR: 0, totalUSD: "0.00", roomCount: 0, extraBedCharge: 0 };
+      return { nights: 0, totalMVR: 0, totalUSD: "0.00", roomCount: 0, extraBedCount: 0, extraBedCharge: 0 };
     }
     const roomCount = watchRooms?.length || 1;
-    const extraBedCharge = watchExtraBed ? EXTRA_BED_CHARGE_MVR : 0;
+    const extraBedCount = watchExtraBeds.length;
+    const extraBedCharge = extraBedCount * EXTRA_BED_CHARGE_MVR;
     const totalMVR = (nights * DAILY_RATE_MVR * roomCount) + extraBedCharge;
     const totalUSD = (totalMVR / USD_EXCHANGE_RATE).toFixed(2);
-    return { nights, totalMVR, totalUSD, roomCount, extraBedCharge };
+    return { nights, totalMVR, totalUSD, roomCount, extraBedCount, extraBedCharge };
   };
 
   const pricing = calculatePricing();
@@ -240,7 +241,8 @@ export default function Home() {
     formData.append("customerNotes", values.customerNotes || "");
     formData.append("roomNumber", values.roomNumbers[0].toString()); // Primary room for backward compatibility
     formData.append("roomNumbers", JSON.stringify(values.roomNumbers)); // All selected rooms
-    formData.append("extraBed", values.extraBed ? "true" : "false");
+    formData.append("extraBed", (values.extraBeds?.length ?? 0) > 0 ? "true" : "false"); // Legacy - true if any extra beds
+    formData.append("extraBeds", JSON.stringify(values.extraBeds || [])); // Room numbers with extra beds
     formData.append("checkInDate", values.checkInDate);
     formData.append("checkOutDate", values.checkOutDate);
     formData.append("totalNights", pricing.nights.toString());
@@ -423,6 +425,11 @@ export default function Home() {
                                     field.onChange([...currentRooms, room.number].sort());
                                   } else {
                                     field.onChange(currentRooms.filter((r: number) => r !== room.number));
+                                    // Also remove extra bed for this room if deselected
+                                    const currentExtraBeds = form.getValues("extraBeds") || [];
+                                    if (currentExtraBeds.includes(room.number)) {
+                                      form.setValue("extraBeds", currentExtraBeds.filter(r => r !== room.number));
+                                    }
                                   }
                                   setTimeout(handleAvailabilityCheck, 100);
                                 }}
@@ -439,30 +446,43 @@ export default function Home() {
                     )}
                   />
 
-                  {/* Extra Bed Option */}
-                  <FormField
-                    control={form.control}
-                    name="extraBed"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            data-testid="checkbox-extra-bed"
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="cursor-pointer">
-                            Extra Bed (+{EXTRA_BED_CHARGE_MVR} MVR)
-                          </FormLabel>
-                          <p className="text-sm text-muted-foreground">
-                            Add an extra bed to your room
+                  {/* Per-Room Extra Bed Options */}
+                  {watchRooms && watchRooms.length > 0 && (
+                    <FormField
+                      control={form.control}
+                      name="extraBeds"
+                      render={({ field }) => (
+                        <FormItem className="rounded-md border p-4">
+                          <FormLabel className="text-base">Extra Bed Options (+{EXTRA_BED_CHARGE_MVR} MVR each)</FormLabel>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Add extra beds to selected rooms
                           </p>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
+                          <div className="flex flex-wrap gap-4">
+                            {watchRooms.map((roomNum) => (
+                              <div key={roomNum} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`extra-bed-room-${roomNum}`}
+                                  checked={field.value?.includes(roomNum)}
+                                  onCheckedChange={(checked) => {
+                                    const currentExtraBeds = field.value || [];
+                                    if (checked) {
+                                      field.onChange([...currentExtraBeds, roomNum].sort());
+                                    } else {
+                                      field.onChange(currentExtraBeds.filter((r: number) => r !== roomNum));
+                                    }
+                                  }}
+                                  data-testid={`checkbox-extra-bed-room-${roomNum}`}
+                                />
+                                <Label htmlFor={`extra-bed-room-${roomNum}`} className="cursor-pointer">
+                                  Room {roomNum}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -554,8 +574,13 @@ export default function Home() {
                             {pricing.roomCount} Room{pricing.roomCount > 1 ? 's' : ''} x {pricing.nights} Night{pricing.nights > 1 ? 's' : ''}
                           </p>
                           <p className="text-xs text-muted-foreground">{DAILY_RATE_MVR} MVR per room per night</p>
-                          {pricing.extraBedCharge > 0 && (
-                            <p className="text-xs text-muted-foreground">+ Extra bed: {EXTRA_BED_CHARGE_MVR} MVR</p>
+                          {pricing.extraBedCount > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              + {pricing.extraBedCount} Extra bed{pricing.extraBedCount > 1 ? 's' : ''}: {pricing.extraBedCharge} MVR
+                              {watchExtraBeds.length > 0 && (
+                                <span className="ml-1">(Room{watchExtraBeds.length > 1 ? 's' : ''} {watchExtraBeds.join(', ')})</span>
+                              )}
+                            </p>
                           )}
                         </div>
                         <div className="flex gap-6">
