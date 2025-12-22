@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { 
@@ -19,7 +19,7 @@ import {
   XCircle,
   Image,
   Plus,
-  Upload
+  Link2
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -106,11 +106,9 @@ export default function Admin() {
   const [editCheckIn, setEditCheckIn] = useState("");
   const [editCheckOut, setEditCheckOut] = useState("");
   const [newBookingsCount, setNewBookingsCount] = useState(0);
-  const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
+  const [newPhotoUrl, setNewPhotoUrl] = useState("");
   const [newPhotoAlt, setNewPhotoAlt] = useState("");
   const [showAddPhotoDialog, setShowAddPhotoDialog] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch all bookings
   const { data: bookings = [], isLoading } = useQuery<Booking[]>({
@@ -269,83 +267,40 @@ export default function Admin() {
     },
   });
 
-  // Add gallery photo mutation (using object storage)
+  // Add gallery photo mutation (using image URL)
   const addPhotoMutation = useMutation({
-    mutationFn: async ({ file, altText }: { file: File; altText: string }) => {
-      // Step 1: Request presigned URL
-      const urlResponse = await fetch("/api/uploads/request-url", {
+    mutationFn: async ({ imageUrl, altText }: { imageUrl: string; altText: string }) => {
+      const response = await fetch("/api/gallery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: file.name,
-          size: file.size,
-          contentType: file.type || "application/octet-stream",
-        }),
-      });
-      
-      if (!urlResponse.ok) {
-        throw new Error("Failed to get upload URL");
-      }
-      
-      const { uploadURL, objectPath } = await urlResponse.json();
-      
-      // Step 2: Upload file directly to object storage
-      const uploadResponse = await fetch(uploadURL, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-      });
-      
-      if (!uploadResponse.ok) {
-        throw new Error("Failed to upload file");
-      }
-      
-      // Step 3: Save to gallery with object path
-      const galleryResponse = await fetch("/api/gallery", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          objectPath,
+          imageUrl,
           altText,
           displayOrder: galleryPhotos.length,
         }),
       });
       
-      if (!galleryResponse.ok) {
-        throw new Error("Failed to save photo to gallery");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to add photo");
       }
       
-      return galleryResponse.json();
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
       setShowAddPhotoDialog(false);
-      setSelectedPhotoFile(null);
-      if (photoPreviewUrl) {
-        URL.revokeObjectURL(photoPreviewUrl);
-      }
-      setPhotoPreviewUrl("");
+      setNewPhotoUrl("");
       setNewPhotoAlt("");
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
       toast({
         title: "Photo Added",
         description: "The photo has been added to the gallery",
       });
     },
-    onError: () => {
-      if (photoPreviewUrl) {
-        URL.revokeObjectURL(photoPreviewUrl);
-      }
-      setPhotoPreviewUrl("");
-      setSelectedPhotoFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to add photo",
+        description: error.message || "Failed to add photo",
         variant: "destructive",
       });
     },
@@ -926,43 +881,27 @@ export default function Admin() {
       <Dialog open={showAddPhotoDialog} onOpenChange={(open) => {
         setShowAddPhotoDialog(open);
         if (!open) {
-          setSelectedPhotoFile(null);
-          if (photoPreviewUrl) {
-            URL.revokeObjectURL(photoPreviewUrl);
-          }
-          setPhotoPreviewUrl("");
+          setNewPhotoUrl("");
           setNewPhotoAlt("");
-          if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-          }
         }
       }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Photo to Gallery</DialogTitle>
             <DialogDescription>
-              Upload a photo from your device
+              Add a photo using an image URL link
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="photo-file">Select Image</Label>
+              <Label htmlFor="photo-url">Image URL</Label>
               <Input
-                ref={fileInputRef}
-                id="photo-file"
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setSelectedPhotoFile(file);
-                    if (photoPreviewUrl) {
-                      URL.revokeObjectURL(photoPreviewUrl);
-                    }
-                    setPhotoPreviewUrl(URL.createObjectURL(file));
-                  }
-                }}
-                data-testid="input-photo-file"
+                id="photo-url"
+                type="url"
+                placeholder="https://example.com/image.jpg"
+                value={newPhotoUrl}
+                onChange={(e) => setNewPhotoUrl(e.target.value)}
+                data-testid="input-photo-url"
               />
             </div>
             <div className="space-y-2">
@@ -975,12 +914,15 @@ export default function Admin() {
                 data-testid="input-photo-alt"
               />
             </div>
-            {photoPreviewUrl && (
+            {newPhotoUrl && (
               <div className="rounded-md overflow-hidden bg-muted aspect-video">
                 <img
-                  src={photoPreviewUrl}
+                  src={newPhotoUrl}
                   alt="Preview"
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=Invalid+URL";
+                  }}
                 />
               </div>
             )}
@@ -991,19 +933,19 @@ export default function Admin() {
             </Button>
             <Button
               onClick={() => {
-                if (selectedPhotoFile) {
-                  addPhotoMutation.mutate({ file: selectedPhotoFile, altText: newPhotoAlt || "Gallery image" });
+                if (newPhotoUrl) {
+                  addPhotoMutation.mutate({ imageUrl: newPhotoUrl, altText: newPhotoAlt || "Gallery image" });
                 }
               }}
-              disabled={!selectedPhotoFile || addPhotoMutation.isPending}
+              disabled={!newPhotoUrl || addPhotoMutation.isPending}
               data-testid="button-save-photo"
             >
               {addPhotoMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Upload className="mr-2 h-4 w-4" />
+                <Link2 className="mr-2 h-4 w-4" />
               )}
-              Upload Photo
+              Add Photo
             </Button>
           </DialogFooter>
         </DialogContent>

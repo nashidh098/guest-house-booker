@@ -263,13 +263,20 @@ export async function registerRoutes(
     }
   });
 
-  // Add gallery photo (using object storage path from presigned URL upload)
+  // Add gallery photo using image URL link
   app.post("/api/gallery", async (req, res) => {
     try {
-      const { objectPath, altText, displayOrder } = req.body;
+      const { imageUrl, altText, displayOrder } = req.body;
       
-      if (!objectPath) {
-        return res.status(400).json({ message: "Object path is required (upload file first)" });
+      if (!imageUrl) {
+        return res.status(400).json({ message: "Image URL is required" });
+      }
+
+      // Basic URL validation
+      try {
+        new URL(imageUrl);
+      } catch {
+        return res.status(400).json({ message: "Invalid image URL format" });
       }
 
       const altTextValue = altText || "Gallery image";
@@ -282,15 +289,9 @@ export async function registerRoutes(
       
       const displayOrderValue = parseInt(displayOrderStr, 10);
 
-      // Set the ACL policy to make the image public
-      const normalizedPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        objectPath,
-        { owner: "admin", visibility: "public" }
-      );
-
       // Validate with schema
       const validationResult = insertGalleryPhotoSchema.safeParse({
-        imageUrl: normalizedPath,
+        imageUrl,
         altText: altTextValue,
         displayOrder: displayOrderValue,
       });
