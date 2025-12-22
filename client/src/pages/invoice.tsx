@@ -253,6 +253,7 @@ export default function Invoice() {
 
             {/* Footer */}
             <div className="text-center pt-6 border-t">
+              <p className="text-muted-foreground text-sm mb-2">If there are any extra charges, payment will be made at checkout. Thank you</p>
               <p className="text-muted-foreground text-sm mb-1">Thank you for choosing MOONLIGHT INN!</p>
               <p className="text-xs text-muted-foreground">We look forward to hosting you.</p>
             </div>
