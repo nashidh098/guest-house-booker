@@ -29,11 +29,17 @@ A complete guest house room booking web application for MOONLIGHT INN in Maldive
 ├── server/                 # Backend Express server
 │   ├── routes.ts          # API endpoints
 │   ├── storage.ts         # Database storage layer
-│   └── db.ts              # PostgreSQL connection
+│   ├── db.ts              # PostgreSQL connection
+│   └── replit_integrations/  # Replit integrations
+│       └── object_storage/   # Object storage for gallery images
 ├── shared/                 # Shared types and schemas
 │   └── schema.ts          # Drizzle models and Zod validation
-└── uploads/               # Uploaded payment slip files
+└── uploads/               # Uploaded payment slip files (legacy)
 ```
+
+## File Storage
+- **Gallery images**: Stored in Replit Object Storage (persists across deployments)
+- **Payment slips**: Stored locally in `/uploads` directory
 
 ## API Endpoints
 - `GET /api/bookings` - Get all bookings

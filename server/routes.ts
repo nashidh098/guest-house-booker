@@ -7,6 +7,7 @@ import { storage } from "./storage";
 import { insertBookingSchema, insertGalleryPhotoSchema, DEFAULT_GALLERY_IMAGES } from "@shared/schema";
 import { z } from "zod";
 import { sendBookingNotification } from "./telegram";
+import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
 
 // Configure multer for file uploads
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -69,11 +70,16 @@ const galleryUpload = multer({
   },
 });
 
+const objectStorageService = new ObjectStorageService();
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Serve uploaded files
+  // Register object storage routes for presigned URL uploads
+  registerObjectStorageRoutes(app);
+  
+  // Serve uploaded files (for legacy local uploads like payment slips)
   app.use("/uploads", (req, res, next) => {
     // req.path starts with /, so we need to handle it properly
     const relativePath = req.path.startsWith('/') ? req.path.slice(1) : req.path;
@@ -257,65 +263,51 @@ export async function registerRoutes(
     }
   });
 
-  // Add gallery photo (file upload)
-  app.post("/api/gallery", galleryUpload.single("image"), async (req, res) => {
-    const uploadedFile = req.file;
-    let shouldCleanup = true;
-    
-    const cleanupFile = () => {
-      if (uploadedFile && shouldCleanup) {
-        const filePath = path.join(galleryUploadsDir, uploadedFile.filename);
-        try {
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        } catch (err) {
-          console.error("Error cleaning up file:", err);
-        }
-      }
-    };
-    
+  // Add gallery photo (using object storage path from presigned URL upload)
+  app.post("/api/gallery", async (req, res) => {
     try {
-      if (!uploadedFile) {
-        return res.status(400).json({ message: "Image file is required" });
+      const { objectPath, altText, displayOrder } = req.body;
+      
+      if (!objectPath) {
+        return res.status(400).json({ message: "Object path is required (upload file first)" });
       }
 
-      const altText = req.body.altText || "Gallery image";
-      const displayOrderStr = String(req.body.displayOrder || "0").trim();
+      const altTextValue = altText || "Gallery image";
+      const displayOrderStr = String(displayOrder || "0").trim();
       
       // Strict numeric validation - only pure integer strings allowed
       if (!/^\d+$/.test(displayOrderStr)) {
-        cleanupFile();
         return res.status(400).json({ message: "Invalid display order - must be a number" });
       }
       
-      const displayOrder = parseInt(displayOrderStr, 10);
-      const imageUrl = `/uploads/gallery/${uploadedFile.filename}`;
+      const displayOrderValue = parseInt(displayOrderStr, 10);
+
+      // Set the ACL policy to make the image public
+      const normalizedPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        objectPath,
+        { owner: "admin", visibility: "public" }
+      );
 
       // Validate with schema
       const validationResult = insertGalleryPhotoSchema.safeParse({
-        imageUrl,
-        altText,
-        displayOrder,
+        imageUrl: normalizedPath,
+        altText: altTextValue,
+        displayOrder: displayOrderValue,
       });
 
       if (!validationResult.success) {
-        cleanupFile();
         return res.status(400).json({ message: "Invalid data", errors: validationResult.error.errors });
       }
 
       const photo = await storage.addGalleryPhoto(validationResult.data);
-      shouldCleanup = false; // Success - don't cleanup
-      
       res.status(201).json(photo);
     } catch (error) {
       console.error("Error adding gallery photo:", error);
-      cleanupFile();
       res.status(500).json({ message: "Failed to add photo" });
     }
   });
 
-  // Delete gallery photo (with file cleanup)
+  // Delete gallery photo
   app.delete("/api/gallery/:id", async (req, res) => {
     try {
       // First get the photo to find the file path
@@ -330,7 +322,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Photo not found" });
       }
 
-      // Delete file from disk if it's a local upload
+      // Delete file from disk if it's a legacy local upload
       if (photo.imageUrl.startsWith("/uploads/gallery/")) {
         const filename = photo.imageUrl.replace("/uploads/gallery/", "");
         const filePath = path.join(galleryUploadsDir, filename);
@@ -338,6 +330,8 @@ export async function registerRoutes(
           fs.unlinkSync(filePath);
         }
       }
+      // Note: Object storage files are not deleted as they may be referenced elsewhere
+      // and will be automatically cleaned up by storage policies
 
       res.json({ message: "Photo deleted successfully" });
     } catch (error) {

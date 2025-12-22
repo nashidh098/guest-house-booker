@@ -243,24 +243,53 @@ export default function Admin() {
     },
   });
 
-  // Add gallery photo mutation (file upload)
+  // Add gallery photo mutation (using object storage)
   const addPhotoMutation = useMutation({
     mutationFn: async ({ file, altText }: { file: File; altText: string }) => {
-      const formData = new FormData();
-      formData.append("image", file);
-      formData.append("altText", altText);
-      formData.append("displayOrder", String(galleryPhotos.length));
-      
-      const response = await fetch("/api/gallery", {
+      // Step 1: Request presigned URL
+      const urlResponse = await fetch("/api/uploads/request-url", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: file.name,
+          size: file.size,
+          contentType: file.type || "application/octet-stream",
+        }),
       });
       
-      if (!response.ok) {
-        throw new Error("Failed to upload photo");
+      if (!urlResponse.ok) {
+        throw new Error("Failed to get upload URL");
       }
       
-      return response.json();
+      const { uploadURL, objectPath } = await urlResponse.json();
+      
+      // Step 2: Upload file directly to object storage
+      const uploadResponse = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error("Failed to upload file");
+      }
+      
+      // Step 3: Save to gallery with object path
+      const galleryResponse = await fetch("/api/gallery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          objectPath,
+          altText,
+          displayOrder: galleryPhotos.length,
+        }),
+      });
+      
+      if (!galleryResponse.ok) {
+        throw new Error("Failed to save photo to gallery");
+      }
+      
+      return galleryResponse.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
