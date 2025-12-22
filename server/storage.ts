@@ -19,6 +19,7 @@ export interface IStorage {
   
   // Gallery operations
   getAllGalleryPhotos(): Promise<GalleryPhoto[]>;
+  getGalleryPhotoById(id: string): Promise<GalleryPhoto | undefined>;
   addGalleryPhoto(photo: InsertGalleryPhoto): Promise<GalleryPhoto>;
   deleteGalleryPhoto(id: string): Promise<boolean>;
 }
@@ -139,6 +140,11 @@ export class DatabaseStorage implements IStorage {
       .from(galleryPhotos)
       .orderBy(asc(galleryPhotos.displayOrder));
     return photos;
+  }
+
+  async getGalleryPhotoById(id: string): Promise<GalleryPhoto | undefined> {
+    const [photo] = await db.select().from(galleryPhotos).where(eq(galleryPhotos.id, id));
+    return photo || undefined;
   }
 
   async addGalleryPhoto(photo: InsertGalleryPhoto): Promise<GalleryPhoto> {
