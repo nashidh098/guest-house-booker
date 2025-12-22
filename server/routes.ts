@@ -481,6 +481,14 @@ export async function registerRoutes(
       res.status(201).json(booking);
     } catch (error) {
       console.error("Booking error:", error);
+      // Clean up uploaded files on error
+      const filesOnError = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+      if (filesOnError?.idPhoto?.[0]) {
+        try { fs.unlinkSync(path.join(uploadsDir, filesOnError.idPhoto[0].filename)); } catch {}
+      }
+      if (filesOnError?.paymentSlip?.[0]) {
+        try { fs.unlinkSync(path.join(uploadsDir, filesOnError.paymentSlip[0].filename)); } catch {}
+      }
       res.status(500).json({ message: "Failed to create booking" });
     }
   });
