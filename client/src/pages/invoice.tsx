@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { DAILY_RATE_MVR, type Booking } from "@shared/schema";
+import { DAILY_RATE_MVR, EXTRA_BED_CHARGE_MVR, type Booking } from "@shared/schema";
 
 export default function Invoice() {
   const { id } = useParams<{ id: string }>();
@@ -62,9 +62,13 @@ export default function Invoice() {
   const shareInvoice = async () => {
     if (!booking) return;
 
+    const roomsText = booking.roomNumbers 
+      ? `Rooms ${(JSON.parse(booking.roomNumbers) as number[]).join(', ')}`
+      : `Room ${booking.roomNumber}`;
+    
     const shareData = {
       title: "MOONLIGHT INN - Booking Invoice",
-      text: `Booking confirmation for ${booking.fullName} at MOONLIGHT INN. Room ${booking.roomNumber}, ${booking.checkInDate} to ${booking.checkOutDate}. Total: ${booking.totalMVR} MVR ($${booking.totalUSD})`,
+      text: `Booking confirmation for ${booking.fullName} at MOONLIGHT INN. ${roomsText}, ${booking.checkInDate} to ${booking.checkOutDate}. Total: ${booking.totalMVR} MVR ($${booking.totalUSD})`,
       url: window.location.href,
     };
 
@@ -215,8 +219,13 @@ export default function Invoice() {
                   </thead>
                   <tbody className="divide-y">
                     <tr>
-                      <td className="p-3 text-sm">Room Number</td>
-                      <td className="p-3 text-sm text-right font-medium" data-testid="text-room-number">Room {booking.roomNumber}</td>
+                      <td className="p-3 text-sm">Room{booking.roomNumbers ? 's' : ''}</td>
+                      <td className="p-3 text-sm text-right font-medium" data-testid="text-room-number">
+                        {booking.roomNumbers 
+                          ? (JSON.parse(booking.roomNumbers) as number[]).map(r => `Room ${r}`).join(', ')
+                          : `Room ${booking.roomNumber}`
+                        }
+                      </td>
                     </tr>
                     <tr>
                       <td className="p-3 text-sm">Check-in Date</td>
@@ -231,9 +240,15 @@ export default function Invoice() {
                       <td className="p-3 text-sm text-right" data-testid="text-total-nights">{booking.totalNights} Night{booking.totalNights > 1 ? 's' : ''}</td>
                     </tr>
                     <tr>
-                      <td className="p-3 text-sm">Price per Night</td>
+                      <td className="p-3 text-sm">Price per Room per Night</td>
                       <td className="p-3 text-sm text-right">{DAILY_RATE_MVR} MVR</td>
                     </tr>
+                    {booking.extraBed && (
+                      <tr>
+                        <td className="p-3 text-sm">Extra Bed</td>
+                        <td className="p-3 text-sm text-right">{EXTRA_BED_CHARGE_MVR} MVR</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

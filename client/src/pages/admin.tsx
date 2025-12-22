@@ -599,7 +599,19 @@ export default function Admin() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>Room {booking.roomNumber}</TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">
+                              {booking.roomNumbers 
+                                ? (JSON.parse(booking.roomNumbers) as number[]).map(r => `Room ${r}`).join(', ')
+                                : `Room ${booking.roomNumber}`
+                              }
+                            </p>
+                            {booking.extraBed && (
+                              <p className="text-xs text-muted-foreground">+ Extra bed</p>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{formatDate(booking.checkInDate)}</TableCell>
                         <TableCell>{formatDate(booking.checkOutDate)}</TableCell>
                         <TableCell>
@@ -968,7 +980,10 @@ export default function Admin() {
           <DialogHeader>
             <DialogTitle>Edit Booking Dates</DialogTitle>
             <DialogDescription>
-              Update dates for {selectedBooking?.fullName} - Room {selectedBooking?.roomNumber}
+              Update dates for {selectedBooking?.fullName} - {selectedBooking?.roomNumbers 
+                ? `Rooms ${(JSON.parse(selectedBooking.roomNumbers) as number[]).join(', ')}`
+                : `Room ${selectedBooking?.roomNumber}`
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1032,7 +1047,10 @@ export default function Admin() {
           <DialogHeader>
             <DialogTitle>Reject Booking</DialogTitle>
             <DialogDescription>
-              Rejecting booking for {selectedBooking?.fullName} - Room {selectedBooking?.roomNumber}
+              Rejecting booking for {selectedBooking?.fullName} - {selectedBooking?.roomNumbers 
+                ? `Rooms ${(JSON.parse(selectedBooking.roomNumbers) as number[]).join(', ')}`
+                : `Room ${selectedBooking?.roomNumber}`
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
