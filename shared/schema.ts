@@ -76,7 +76,7 @@ export const BANK_ACCOUNTS: BankAccount[] = [
     mvrAccount: "7770000168454",
     mvrAccountName: "W COLLECTION",
     usdAccount: "7730000528706",
-    usdAccountName: "MOHAED I WAHEED",
+    usdAccountName: "MOHAMED I WAHEED",
   },
   {
     bankName: "Maldives Islamic Bank",

@@ -78,7 +78,7 @@ The application runs with `npm run dev` which starts:
 - **Contact**: 9994026
 
 ## Bank Account Details
-- **Bank of Maldives (USD)**: 7730000528706 - Account Name: MOHAED I WAHEED
+- **Bank of Maldives (USD)**: 7730000528706 - Account Name: MOHAMED I WAHEED
 - **Bank of Maldives (MVR)**: 7770000168454 - Account Name: W COLLECTION
 - **Maldives Islamic Bank (MVR)**: 90501400043381000 - Account Name: W COLLECTION
 
