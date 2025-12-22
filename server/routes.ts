@@ -75,7 +75,9 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Serve uploaded files
   app.use("/uploads", (req, res, next) => {
-    const filePath = path.join(uploadsDir, req.path);
+    // req.path starts with /, so we need to handle it properly
+    const relativePath = req.path.startsWith('/') ? req.path.slice(1) : req.path;
+    const filePath = path.join(uploadsDir, relativePath);
     if (fs.existsSync(filePath)) {
       res.sendFile(filePath);
     } else {
@@ -257,24 +259,58 @@ export async function registerRoutes(
 
   // Add gallery photo (file upload)
   app.post("/api/gallery", galleryUpload.single("image"), async (req, res) => {
+    const uploadedFile = req.file;
+    let shouldCleanup = true;
+    
+    const cleanupFile = () => {
+      if (uploadedFile && shouldCleanup) {
+        const filePath = path.join(galleryUploadsDir, uploadedFile.filename);
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (err) {
+          console.error("Error cleaning up file:", err);
+        }
+      }
+    };
+    
     try {
-      if (!req.file) {
+      if (!uploadedFile) {
         return res.status(400).json({ message: "Image file is required" });
       }
 
       const altText = req.body.altText || "Gallery image";
-      const displayOrder = parseInt(req.body.displayOrder || "0", 10);
-      const imageUrl = `/uploads/gallery/${req.file.filename}`;
+      const displayOrderStr = String(req.body.displayOrder || "0").trim();
+      
+      // Strict numeric validation - only pure integer strings allowed
+      if (!/^\d+$/.test(displayOrderStr)) {
+        cleanupFile();
+        return res.status(400).json({ message: "Invalid display order - must be a number" });
+      }
+      
+      const displayOrder = parseInt(displayOrderStr, 10);
+      const imageUrl = `/uploads/gallery/${uploadedFile.filename}`;
 
-      const photo = await storage.addGalleryPhoto({
+      // Validate with schema
+      const validationResult = insertGalleryPhotoSchema.safeParse({
         imageUrl,
         altText,
         displayOrder,
       });
+
+      if (!validationResult.success) {
+        cleanupFile();
+        return res.status(400).json({ message: "Invalid data", errors: validationResult.error.errors });
+      }
+
+      const photo = await storage.addGalleryPhoto(validationResult.data);
+      shouldCleanup = false; // Success - don't cleanup
       
       res.status(201).json(photo);
     } catch (error) {
       console.error("Error adding gallery photo:", error);
+      cleanupFile();
       res.status(500).json({ message: "Failed to add photo" });
     }
   });

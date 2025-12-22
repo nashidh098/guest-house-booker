@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { 
@@ -18,7 +18,8 @@ import {
   Edit,
   XCircle,
   Image,
-  Plus
+  Plus,
+  Upload
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -79,9 +80,11 @@ export default function Admin() {
   const [editCheckIn, setEditCheckIn] = useState("");
   const [editCheckOut, setEditCheckOut] = useState("");
   const [newBookingsCount, setNewBookingsCount] = useState(0);
-  const [newPhotoUrl, setNewPhotoUrl] = useState("");
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [newPhotoAlt, setNewPhotoAlt] = useState("");
   const [showAddPhotoDialog, setShowAddPhotoDialog] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch all bookings
   const { data: bookings = [], isLoading } = useQuery<Booking[]>({
@@ -240,22 +243,51 @@ export default function Admin() {
     },
   });
 
-  // Add gallery photo mutation
+  // Add gallery photo mutation (file upload)
   const addPhotoMutation = useMutation({
-    mutationFn: async ({ imageUrl, altText }: { imageUrl: string; altText: string }) => {
-      return apiRequest("POST", "/api/gallery", { imageUrl, altText, displayOrder: galleryPhotos.length });
+    mutationFn: async ({ file, altText }: { file: File; altText: string }) => {
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("altText", altText);
+      formData.append("displayOrder", String(galleryPhotos.length));
+      
+      const response = await fetch("/api/gallery", {
+        method: "POST",
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to upload photo");
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
       setShowAddPhotoDialog(false);
-      setNewPhotoUrl("");
+      setSelectedPhotoFile(null);
+      if (photoPreviewUrl) {
+        URL.revokeObjectURL(photoPreviewUrl);
+      }
+      setPhotoPreviewUrl("");
       setNewPhotoAlt("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       toast({
         title: "Photo Added",
         description: "The photo has been added to the gallery",
       });
     },
     onError: () => {
+      if (photoPreviewUrl) {
+        URL.revokeObjectURL(photoPreviewUrl);
+      }
+      setPhotoPreviewUrl("");
+      setSelectedPhotoFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       toast({
         title: "Error",
         description: "Failed to add photo",
@@ -812,24 +844,46 @@ export default function Admin() {
       </main>
 
       {/* Add Photo Dialog */}
-      <Dialog open={showAddPhotoDialog} onOpenChange={setShowAddPhotoDialog}>
+      <Dialog open={showAddPhotoDialog} onOpenChange={(open) => {
+        setShowAddPhotoDialog(open);
+        if (!open) {
+          setSelectedPhotoFile(null);
+          if (photoPreviewUrl) {
+            URL.revokeObjectURL(photoPreviewUrl);
+          }
+          setPhotoPreviewUrl("");
+          setNewPhotoAlt("");
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Photo to Gallery</DialogTitle>
             <DialogDescription>
-              Enter the URL and description for the new photo
+              Upload a photo from your device
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="photo-url">Image URL</Label>
+              <Label htmlFor="photo-file">Select Image</Label>
               <Input
-                id="photo-url"
-                type="url"
-                placeholder="https://example.com/image.jpg"
-                value={newPhotoUrl}
-                onChange={(e) => setNewPhotoUrl(e.target.value)}
-                data-testid="input-photo-url"
+                ref={fileInputRef}
+                id="photo-file"
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setSelectedPhotoFile(file);
+                    if (photoPreviewUrl) {
+                      URL.revokeObjectURL(photoPreviewUrl);
+                    }
+                    setPhotoPreviewUrl(URL.createObjectURL(file));
+                  }
+                }}
+                data-testid="input-photo-file"
               />
             </div>
             <div className="space-y-2">
@@ -842,15 +896,12 @@ export default function Admin() {
                 data-testid="input-photo-alt"
               />
             </div>
-            {newPhotoUrl && (
+            {photoPreviewUrl && (
               <div className="rounded-md overflow-hidden bg-muted aspect-video">
                 <img
-                  src={newPhotoUrl}
+                  src={photoPreviewUrl}
                   alt="Preview"
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=Invalid+URL";
-                  }}
                 />
               </div>
             )}
@@ -860,14 +911,20 @@ export default function Admin() {
               Cancel
             </Button>
             <Button
-              onClick={() => addPhotoMutation.mutate({ imageUrl: newPhotoUrl, altText: newPhotoAlt })}
-              disabled={!newPhotoUrl || !newPhotoAlt || addPhotoMutation.isPending}
+              onClick={() => {
+                if (selectedPhotoFile) {
+                  addPhotoMutation.mutate({ file: selectedPhotoFile, altText: newPhotoAlt || "Gallery image" });
+                }
+              }}
+              disabled={!selectedPhotoFile || addPhotoMutation.isPending}
               data-testid="button-save-photo"
             >
               {addPhotoMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Add Photo
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
+              Upload Photo
             </Button>
           </DialogFooter>
         </DialogContent>
