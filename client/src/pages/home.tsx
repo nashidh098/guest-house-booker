@@ -558,7 +558,7 @@ export default function Home() {
                                   </Button>
                                 </div>
                                 <p className="font-mono text-lg" data-testid={`text-mvr-account-${index}`}>{bank.mvrAccount}</p>
-                                <p className="text-sm text-muted-foreground">Account Name: {bank.accountName}</p>
+                                <p className="text-sm text-muted-foreground">Account Name: {bank.mvrAccountName}</p>
                               </div>
                             )}
 
@@ -581,7 +581,7 @@ export default function Home() {
                                   </Button>
                                 </div>
                                 <p className="font-mono text-lg" data-testid={`text-usd-account-${index}`}>{bank.usdAccount}</p>
-                                <p className="text-sm text-muted-foreground">Account Name: {bank.accountName}</p>
+                                <p className="text-sm text-muted-foreground">Account Name: {bank.usdAccountName}</p>
                               </div>
                             )}
                           </div>
