@@ -343,9 +343,18 @@ export async function registerRoutes(
   // ==================== Booking Routes ====================
 
   // Create booking with validation
-  app.post("/api/bookings", upload.single("paymentSlip"), async (req, res) => {
+  const bookingUpload = upload.fields([
+    { name: "idPhoto", maxCount: 1 },
+    { name: "paymentSlip", maxCount: 1 }
+  ]);
+  
+  app.post("/api/bookings", bookingUpload, async (req, res) => {
     try {
       const { fullName, idNumber, phoneNumber, customerNotes, roomNumber, roomNumbers, extraBed, extraBeds, checkInDate, checkOutDate, totalNights, totalMVR, totalUSD } = req.body;
+      
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+      const idPhotoFile = files?.idPhoto?.[0];
+      const paymentSlipFile = files?.paymentSlip?.[0];
       
       // Build booking data
       const bookingData = {
@@ -362,7 +371,8 @@ export async function registerRoutes(
         totalNights: parseInt(totalNights, 10),
         totalMVR: parseInt(totalMVR, 10),
         totalUSD,
-        paymentSlip: req.file?.filename || undefined,
+        idPhoto: idPhotoFile?.filename || undefined,
+        paymentSlip: paymentSlipFile?.filename || undefined,
         status: "Pending",
         bookingDate: new Date().toISOString().split("T")[0],
       };
@@ -396,6 +406,16 @@ export async function registerRoutes(
         }
       }
 
+      // Helper to clean up uploaded files on error
+      const cleanupFiles = () => {
+        if (idPhotoFile) {
+          try { fs.unlinkSync(path.join(uploadsDir, idPhotoFile.filename)); } catch {}
+        }
+        if (paymentSlipFile) {
+          try { fs.unlinkSync(path.join(uploadsDir, paymentSlipFile.filename)); } catch {}
+        }
+      };
+
       // Validate input using Zod schema
       const validationSchema = z.object({
         fullName: z.string().min(2, "Full name is required"),
@@ -411,6 +431,7 @@ export async function registerRoutes(
         totalNights: z.number().min(1, "Must stay at least 1 night"),
         totalMVR: z.number().min(1),
         totalUSD: z.string(),
+        idPhoto: z.string().optional(),
         paymentSlip: z.string().optional(),
         status: z.string(),
         bookingDate: z.string(),
@@ -419,10 +440,7 @@ export async function registerRoutes(
       const parseResult = validationSchema.safeParse(bookingData);
       
       if (!parseResult.success) {
-        // Delete uploaded file if validation fails
-        if (req.file) {
-          fs.unlinkSync(path.join(uploadsDir, req.file.filename));
-        }
+        cleanupFiles();
         const errors = parseResult.error.errors.map(e => e.message).join(", ");
         return res.status(400).json({ message: `Validation failed: ${errors}` });
       }
@@ -437,10 +455,7 @@ export async function registerRoutes(
         );
         
         if (!available) {
-          // Delete uploaded file if booking fails
-          if (req.file) {
-            fs.unlinkSync(path.join(uploadsDir, req.file.filename));
-          }
+          cleanupFiles();
           return res.status(409).json({ message: `Room ${room} already booked for selected dates` });
         }
       }
@@ -466,12 +481,6 @@ export async function registerRoutes(
       res.status(201).json(booking);
     } catch (error) {
       console.error("Booking error:", error);
-      // Clean up uploaded file on error
-      if (req.file) {
-        try {
-          fs.unlinkSync(path.join(uploadsDir, req.file.filename));
-        } catch {}
-      }
       res.status(500).json({ message: "Failed to create booking" });
     }
   });

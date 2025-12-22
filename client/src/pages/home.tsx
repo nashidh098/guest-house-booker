@@ -40,6 +40,8 @@ export default function Home() {
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [idPhotoFile, setIdPhotoFile] = useState<File | null>(null);
+  const [idPhotoPreview, setIdPhotoPreview] = useState<string | null>(null);
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
   const [isRoomUnavailable, setIsRoomUnavailable] = useState(false);
   const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null);
@@ -205,6 +207,31 @@ export default function Home() {
     setFilePreview(null);
   };
 
+  const handleIdPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please upload an image under 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setIdPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setIdPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeIdPhoto = () => {
+    setIdPhotoFile(null);
+    setIdPhotoPreview(null);
+  };
+
   const copyToClipboard = async (text: string, accountId: string) => {
     await navigator.clipboard.writeText(text);
     setCopiedAccount(accountId);
@@ -220,6 +247,15 @@ export default function Home() {
       toast({
         title: "Room Unavailable",
         description: "Please select different dates or another room",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!idPhotoFile) {
+      toast({
+        title: "ID Photo Required",
+        description: "Please upload a photo of your ID card or passport",
         variant: "destructive",
       });
       return;
@@ -248,6 +284,7 @@ export default function Home() {
     formData.append("totalNights", pricing.nights.toString());
     formData.append("totalMVR", pricing.totalMVR.toString());
     formData.append("totalUSD", pricing.totalUSD);
+    formData.append("idPhoto", idPhotoFile);
     formData.append("paymentSlip", selectedFile);
 
     bookingMutation.mutate(formData);
@@ -669,11 +706,68 @@ export default function Home() {
                   </Accordion>
                 </div>
 
+                {/* ID Photo Upload */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2 border-0">
+                    <Upload className="h-5 w-5 text-primary" />
+                    Upload ID Card / Passport Photo <span className="text-destructive">*</span>
+                  </h3>
+                  <p className="text-sm text-muted-foreground">Please upload a clear photo of your ID card or passport for verification.</p>
+
+                  {!idPhotoPreview ? (
+                    <label 
+                      className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-input rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                      data-testid="input-id-photo-dropzone"
+                    >
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="h-10 w-10 text-muted-foreground mb-3" />
+                        <p className="mb-2 text-sm text-muted-foreground">
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG (Max 5MB)</p>
+                      </div>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={handleIdPhotoChange}
+                        data-testid="input-id-photo"
+                      />
+                    </label>
+                  ) : (
+                    <div className="relative w-full p-4 border rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-4">
+                        <img 
+                          src={idPhotoPreview} 
+                          alt="ID photo preview" 
+                          className="h-24 w-24 object-cover rounded-md"
+                          data-testid="img-id-photo-preview"
+                        />
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{idPhotoFile?.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {idPhotoFile && (idPhotoFile.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={removeIdPhoto}
+                          data-testid="button-remove-id-photo"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Payment Upload */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold flex items-center gap-2 border-0">
                     <Upload className="h-5 w-5 text-primary" />
-                    Upload Payment Slip
+                    Upload Payment Slip <span className="text-destructive">*</span>
                   </h3>
 
                   {!filePreview ? (
@@ -752,7 +846,7 @@ export default function Home() {
                   type="submit"
                   size="lg"
                   className="w-full md:max-w-md md:mx-auto md:flex"
-                  disabled={isRoomUnavailable || bookingMutation.isPending || !selectedFile}
+                  disabled={isRoomUnavailable || bookingMutation.isPending || !idPhotoFile || !selectedFile}
                   data-testid="button-submit-booking"
                 >
                   {bookingMutation.isPending ? (

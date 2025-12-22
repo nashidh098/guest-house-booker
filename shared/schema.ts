@@ -34,6 +34,7 @@ export const bookings = pgTable("bookings", {
   totalMVR: integer("total_mvr").notNull(),
   totalUSD: text("total_usd").notNull(),
   paymentSlip: text("payment_slip"),
+  idPhoto: text("id_photo"),
   status: text("status").notNull().default("Pending"),
   adminNotes: text("admin_notes"),
   bookingDate: text("booking_date").notNull(),
