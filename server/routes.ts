@@ -476,6 +476,7 @@ export async function registerRoutes(
         totalNights: booking.totalNights,
         totalMVR: booking.totalMVR,
         totalUSD: booking.totalUSD,
+        idPhoto: booking.idPhoto,
         paymentSlip: booking.paymentSlip,
       }, appUrl).catch(err => console.error("Telegram notification failed:", err));
       

@@ -14,6 +14,7 @@ interface BookingNotification {
   totalNights: number;
   totalMVR: number;
   totalUSD: string;
+  idPhoto: string | null;
   paymentSlip: string | null;
 }
 
@@ -62,6 +63,12 @@ ${booking.customerNotes ? `📝 *Customer Notes*\n${booking.customerNotes}\n` : 
       const error = await response.text();
       console.error("Telegram API error:", error);
       return false;
+    }
+
+    // If there's an ID photo, send it
+    if (booking.idPhoto && appUrl) {
+      const idPhotoUrl = `${appUrl}/uploads/${booking.idPhoto}`;
+      await sendPhoto(idPhotoUrl, `ID Card/Passport for ${booking.fullName}`);
     }
 
     // If there's a payment slip, send it as a photo
