@@ -85,7 +85,16 @@ export default function Invoice() {
       const yOffset = margin;
 
       pdf.addImage(imgData, "PNG", xOffset, yOffset, finalWidth, finalHeight);
-      pdf.save(`MOONLIGHT-INN-Invoice-${booking?.id?.slice(0, 8) || "booking"}.pdf`);
+      
+      const pdfBlob = pdf.output("blob");
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `MOONLIGHT-INN-Invoice-${booking?.id?.slice(0, 8) || "booking"}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
 
       toast({
         title: "Downloaded!",
