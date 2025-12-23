@@ -54,37 +54,37 @@ export default function Invoice() {
       const element = invoiceRef.current;
       
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
-        allowTaint: true,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight,
       });
 
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/png", 1.0);
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4",
       });
 
-      const imgWidth = 210;
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 10;
+      const contentWidth = pageWidth - (margin * 2);
+      const contentHeight = pageHeight - (margin * 2);
+      
+      const imgWidth = contentWidth;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+      
+      const finalHeight = Math.min(imgHeight, contentHeight);
+      const finalWidth = (finalHeight === contentHeight) 
+        ? (canvas.width * contentHeight) / canvas.height 
+        : imgWidth;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= 297;
+      const xOffset = (pageWidth - finalWidth) / 2;
+      const yOffset = margin;
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= 297;
-      }
-
+      pdf.addImage(imgData, "PNG", xOffset, yOffset, finalWidth, finalHeight);
       pdf.save(`MOONLIGHT-INN-Invoice-${booking?.id?.slice(0, 8) || "booking"}.pdf`);
 
       toast({
@@ -205,49 +205,48 @@ export default function Invoice() {
 
         {/* Invoice Card */}
         <Card className="shadow-lg overflow-hidden">
-          <div ref={invoiceRef} className="bg-white p-6 md:p-8">
+          <div ref={invoiceRef} className="bg-white p-5">
             {/* Invoice Header */}
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8 pb-6 border-b">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4 pb-3 border-b">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-primary mb-1" data-testid="text-brand">
+                <h1 className="text-xl font-bold text-primary" data-testid="text-brand">
                   MOONLIGHT INN
                 </h1>
-                <p className="text-muted-foreground">Guest House</p>
-                <p className="text-sm text-muted-foreground">Maldives</p>
+                <p className="text-sm text-muted-foreground">Guest House, Maldives</p>
               </div>
               <div className="text-left md:text-right">
-                <h2 className="text-xl font-semibold mb-2">INVOICE</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="text-lg font-semibold">INVOICE</h2>
+                <p className="text-xs text-muted-foreground">
                   Invoice #: <span className="font-mono" data-testid="text-invoice-id">{booking.id.slice(0, 8).toUpperCase()}</span>
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Date: <span data-testid="text-booking-date">{formatDate(booking.bookingDate)}</span>
                 </p>
               </div>
             </div>
 
             {/* Guest Details */}
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Guest Details</h3>
-              <p className="font-medium text-lg" data-testid="text-guest-name">{booking.fullName}</p>
-              <p className="text-muted-foreground" data-testid="text-guest-id">ID/Passport: {booking.idNumber}</p>
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Guest Details</h3>
+              <p className="font-medium" data-testid="text-guest-name">{booking.fullName}</p>
+              <p className="text-sm text-muted-foreground" data-testid="text-guest-id">ID/Passport: {booking.idNumber}</p>
             </div>
 
             {/* Booking Details Table */}
-            <div className="mb-8">
-              <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Booking Details</h3>
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full">
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Booking Details</h3>
+              <div className="border rounded-md overflow-hidden">
+                <table className="w-full text-sm">
                   <thead className="bg-muted">
                     <tr>
-                      <th className="text-left p-3 text-sm font-medium">Description</th>
-                      <th className="text-right p-3 text-sm font-medium">Details</th>
+                      <th className="text-left px-3 py-2 font-medium">Description</th>
+                      <th className="text-right px-3 py-2 font-medium">Details</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     <tr>
-                      <td className="p-3 text-sm">Room{parseRoomNumbers(booking.roomNumbers) ? 's' : ''}</td>
-                      <td className="p-3 text-sm text-right font-medium" data-testid="text-room-number">
+                      <td className="px-3 py-2">Room{parseRoomNumbers(booking.roomNumbers) ? 's' : ''}</td>
+                      <td className="px-3 py-2 text-right font-medium" data-testid="text-room-number">
                         {(() => {
                           const rooms = parseRoomNumbers(booking.roomNumbers);
                           return rooms 
@@ -257,37 +256,37 @@ export default function Invoice() {
                       </td>
                     </tr>
                     <tr>
-                      <td className="p-3 text-sm">Check-in Date</td>
-                      <td className="p-3 text-sm text-right" data-testid="text-check-in">{formatDate(booking.checkInDate)}</td>
+                      <td className="px-3 py-2">Check-in Date</td>
+                      <td className="px-3 py-2 text-right" data-testid="text-check-in">{formatDate(booking.checkInDate)}</td>
                     </tr>
                     <tr>
-                      <td className="p-3 text-sm">Check-out Date</td>
-                      <td className="p-3 text-sm text-right" data-testid="text-check-out">{formatDate(booking.checkOutDate)}</td>
+                      <td className="px-3 py-2">Check-out Date</td>
+                      <td className="px-3 py-2 text-right" data-testid="text-check-out">{formatDate(booking.checkOutDate)}</td>
                     </tr>
                     <tr>
-                      <td className="p-3 text-sm">Total Nights</td>
-                      <td className="p-3 text-sm text-right" data-testid="text-total-nights">{booking.totalNights} Night{booking.totalNights > 1 ? 's' : ''}</td>
+                      <td className="px-3 py-2">Total Nights</td>
+                      <td className="px-3 py-2 text-right" data-testid="text-total-nights">{booking.totalNights} Night{booking.totalNights > 1 ? 's' : ''}</td>
                     </tr>
                     <tr>
-                      <td className="p-3 text-sm">Price per Room per Night</td>
-                      <td className="p-3 text-sm text-right">{DAILY_RATE_MVR} MVR</td>
+                      <td className="px-3 py-2">Price per Room per Night</td>
+                      <td className="px-3 py-2 text-right">{DAILY_RATE_MVR} MVR</td>
                     </tr>
                     {(() => {
                       const extraBedRooms = parseExtraBeds(booking.extraBeds);
                       if (extraBedRooms && extraBedRooms.length > 0) {
                         return (
                           <tr>
-                            <td className="p-3 text-sm">
+                            <td className="px-3 py-2">
                               Extra Bed{extraBedRooms.length > 1 ? 's' : ''} (Room{extraBedRooms.length > 1 ? 's' : ''} {extraBedRooms.join(', ')})
                             </td>
-                            <td className="p-3 text-sm text-right">{extraBedRooms.length * EXTRA_BED_CHARGE_MVR} MVR</td>
+                            <td className="px-3 py-2 text-right">{extraBedRooms.length * EXTRA_BED_CHARGE_MVR} MVR</td>
                           </tr>
                         );
                       } else if (booking.extraBed) {
                         return (
                           <tr>
-                            <td className="p-3 text-sm">Extra Bed</td>
-                            <td className="p-3 text-sm text-right">{EXTRA_BED_CHARGE_MVR} MVR</td>
+                            <td className="px-3 py-2">Extra Bed</td>
+                            <td className="px-3 py-2 text-right">{EXTRA_BED_CHARGE_MVR} MVR</td>
                           </tr>
                         );
                       }
@@ -299,22 +298,21 @@ export default function Invoice() {
             </div>
 
             {/* Totals */}
-            <div className="bg-muted/50 rounded-lg p-4 mb-6">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-muted-foreground">Total (MVR)</span>
-                <span className="text-2xl font-bold" data-testid="text-invoice-total-mvr">{booking.totalMVR.toLocaleString()} MVR</span>
+            <div className="bg-muted/50 rounded-md p-3 mb-4">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm text-muted-foreground">Total (MVR)</span>
+                <span className="text-xl font-bold" data-testid="text-invoice-total-mvr">{booking.totalMVR.toLocaleString()} MVR</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Total (USD)</span>
-                <span className="text-xl font-semibold text-muted-foreground" data-testid="text-invoice-total-usd">${booking.totalUSD}</span>
+                <span className="text-sm text-muted-foreground">Total (USD)</span>
+                <span className="text-lg font-semibold text-muted-foreground" data-testid="text-invoice-total-usd">${booking.totalUSD}</span>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="text-center pt-6 border-t">
-              <p className="text-muted-foreground text-sm mb-2">If there are any extra charges, payment will be made at checkout. Thank you</p>
-              <p className="text-muted-foreground text-sm mb-1">Thank you for choosing MOONLIGHT INN!</p>
-              <p className="text-xs text-muted-foreground">We look forward to hosting you.</p>
+            <div className="text-center pt-3 border-t">
+              <p className="text-muted-foreground text-xs mb-1">If there are any extra charges, payment will be made at checkout. Thank you</p>
+              <p className="text-muted-foreground text-xs">Thank you for choosing MOONLIGHT INN! We look forward to hosting you.</p>
             </div>
           </div>
         </Card>
