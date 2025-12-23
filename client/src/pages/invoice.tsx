@@ -2,13 +2,12 @@ import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { format, parseISO } from "date-fns";
-import { Download, Share2, ArrowLeft, Printer, CheckCircle, Clock } from "lucide-react";
+import { Download, Share2, ArrowLeft, Printer } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { DAILY_RATE_MVR, EXTRA_BED_CHARGE_MVR, type Booking } from "@shared/schema";
@@ -52,10 +51,16 @@ export default function Invoice() {
     if (!invoiceRef.current) return;
 
     try {
-      const canvas = await html2canvas(invoiceRef.current, {
+      const element = invoiceRef.current;
+      
+      const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
+        logging: false,
+        allowTaint: true,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -66,20 +71,31 @@ export default function Invoice() {
       });
 
       const imgWidth = 210;
-      const pageHeight = 297;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
 
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-      pdf.save(`invoice-${booking?.id || "booking"}.pdf`);
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= 297;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= 297;
+      }
+
+      pdf.save(`MOONLIGHT-INN-Invoice-${booking?.id?.slice(0, 8) || "booking"}.pdf`);
 
       toast({
         title: "Downloaded!",
         description: "Invoice PDF has been downloaded",
       });
     } catch (err) {
+      console.error("PDF download error:", err);
       toast({
         title: "Download Failed",
-        description: "Unable to generate PDF",
+        description: "Unable to generate PDF. Try using Print instead.",
         variant: "destructive",
       });
     }
@@ -208,22 +224,6 @@ export default function Invoice() {
                   Date: <span data-testid="text-booking-date">{formatDate(booking.bookingDate)}</span>
                 </p>
               </div>
-            </div>
-
-            {/* Status Badge */}
-            <div className="mb-6">
-              <Badge 
-                variant={booking.status === "Confirmed" ? "default" : "secondary"}
-                className="text-sm"
-                data-testid="badge-status"
-              >
-                {booking.status === "Confirmed" ? (
-                  <CheckCircle className="mr-1 h-3 w-3" />
-                ) : (
-                  <Clock className="mr-1 h-3 w-3" />
-                )}
-                {booking.status}
-              </Badge>
             </div>
 
             {/* Guest Details */}

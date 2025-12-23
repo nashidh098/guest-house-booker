@@ -19,7 +19,8 @@ import {
   XCircle,
   Image,
   Plus,
-  Link2
+  Link2,
+  Download
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -751,6 +752,18 @@ export default function Admin() {
                                 </AlertDialogContent>
                               </AlertDialog>
                             )}
+
+                            {/* Download Invoice */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              asChild
+                              data-testid={`button-invoice-${booking.id}`}
+                            >
+                              <a href={`/invoice/${booking.id}`} target="_blank" rel="noopener noreferrer">
+                                <Download className="h-4 w-4" />
+                              </a>
+                            </Button>
 
                             {/* Delete - Always available */}
                             <AlertDialog>
