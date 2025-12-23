@@ -66,6 +66,13 @@ export default function Invoice() {
         unit: "mm",
         format: "a4",
       });
+      
+      pdf.setProperties({
+        title: `MOONLIGHT INN Invoice - ${booking?.id?.slice(0, 8) || "booking"}`,
+        subject: "Booking Invoice",
+        author: "MOONLIGHT INN",
+        creator: "MOONLIGHT INN",
+      });
 
       const pageWidth = 210;
       const pageHeight = 297;
