@@ -72,6 +72,8 @@ const galleryUpload = multer({
 
 const objectStorageService = new ObjectStorageService();
 
+import { execSync } from "child_process";
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -148,6 +150,7 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to get webhook info" });
     }
   });
+
   
   // Serve uploaded files (for legacy local uploads like payment slips)
   app.use("/uploads", (req, res, next) => {
