@@ -99,11 +99,53 @@ export async function registerRoutes(
   // Telegram webhook endpoint for bot commands
   app.post("/api/telegram/webhook", async (req, res) => {
     try {
+      console.log("Telegram webhook received:", JSON.stringify(req.body));
       await handleTelegramWebhook(req.body);
       res.json({ ok: true });
     } catch (error) {
       console.error("Telegram webhook error:", error);
       res.json({ ok: true }); // Always return 200 to Telegram
+    }
+  });
+
+  // Setup Telegram webhook - call this once after publishing
+  app.get("/api/telegram/setup-webhook", async (req, res) => {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      return res.status(500).json({ error: "Bot token not configured" });
+    }
+
+    const webhookUrl = "https://moonlightinn.org/api/telegram/webhook";
+    
+    try {
+      const response = await fetch(
+        `https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`
+      );
+      const result = await response.json();
+      console.log("Webhook setup result:", result);
+      res.json({ success: true, result, webhookUrl });
+    } catch (error) {
+      console.error("Failed to set webhook:", error);
+      res.status(500).json({ error: "Failed to set webhook" });
+    }
+  });
+
+  // Check current webhook status
+  app.get("/api/telegram/webhook-info", async (req, res) => {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      return res.status(500).json({ error: "Bot token not configured" });
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.telegram.org/bot${botToken}/getWebhookInfo`
+      );
+      const result = await response.json();
+      res.json(result);
+    } catch (error) {
+      console.error("Failed to get webhook info:", error);
+      res.status(500).json({ error: "Failed to get webhook info" });
     }
   });
   
