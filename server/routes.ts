@@ -78,6 +78,23 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Register object storage routes for presigned URL uploads
   registerObjectStorageRoutes(app);
+
+  // Admin login endpoint
+  app.post("/api/admin/login", (req, res) => {
+    const { username, password } = req.body;
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!adminUsername || !adminPassword) {
+      return res.status(500).json({ message: "Admin credentials not configured" });
+    }
+
+    if (username === adminUsername && password === adminPassword) {
+      return res.json({ success: true, message: "Login successful" });
+    }
+
+    return res.status(401).json({ message: "Invalid username or password" });
+  });
   
   // Serve uploaded files (for legacy local uploads like payment slips)
   app.use("/uploads", (req, res, next) => {

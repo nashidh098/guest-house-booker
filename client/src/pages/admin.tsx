@@ -20,7 +20,9 @@ import {
   Image,
   Plus,
   Link2,
-  Download
+  Download,
+  LogOut,
+  Lock
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -98,6 +100,12 @@ const parseExtraBeds = (extraBeds: string | null | undefined): number[] | null =
 
 export default function Admin() {
   const { toast } = useToast();
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return sessionStorage.getItem("adminLoggedIn") === "true";
+  });
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showSlipModal, setShowSlipModal] = useState(false);
@@ -110,6 +118,37 @@ export default function Admin() {
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
   const [newPhotoAlt, setNewPhotoAlt] = useState("");
   const [showAddPhotoDialog, setShowAddPhotoDialog] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setIsLoggedIn(true);
+        sessionStorage.setItem("adminLoggedIn", "true");
+        toast({ title: "Welcome!", description: "Login successful" });
+      } else {
+        toast({ title: "Login failed", description: data.message, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to connect to server", variant: "destructive" });
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    sessionStorage.removeItem("adminLoggedIn");
+    setUsername("");
+    setPassword("");
+  };
 
   // Fetch all bookings
   const { data: bookings = [], isLoading } = useQuery<Booking[]>({
@@ -449,6 +488,65 @@ export default function Admin() {
     </Card>
   );
 
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 w-fit">
+              <Lock className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">Admin Login</CardTitle>
+            <p className="text-sm text-muted-foreground">MOONLIGHT INN</p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter username"
+                  required
+                  data-testid="input-admin-username"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  required
+                  data-testid="input-admin-password"
+                />
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={loginLoading}
+                data-testid="button-admin-login"
+              >
+                {loginLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Logging in...
+                  </>
+                ) : (
+                  "Login"
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
@@ -489,6 +587,14 @@ export default function Admin() {
                 </span>
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              data-testid="button-logout"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </header>
