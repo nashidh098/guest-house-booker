@@ -1,10 +1,12 @@
 // Telegram notification service for booking alerts
+import { storage } from "./storage";
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const ADDITIONAL_CHAT_IDS = ["5380653319"];
 
 interface BookingNotification {
+  id?: string;
   fullName: string;
   idNumber: string;
   phoneNumber: string | null;
@@ -75,14 +77,27 @@ ${booking.customerNotes ? `📝 *Customer Notes*\n${booking.customerNotes}\n` : 
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
     
     for (const chatId of chatIds) {
+      const requestBody: any = {
+        chat_id: chatId,
+        text: message,
+        parse_mode: "Markdown",
+      };
+
+      if (booking.id) {
+        requestBody.reply_markup = {
+          inline_keyboard: [
+            [
+              { text: "✅ Approve Booking", callback_data: `approve_${booking.id}` },
+              { text: "❌ Reject Booking", callback_data: `reject_${booking.id}` }
+            ]
+          ]
+        };
+      }
+
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: message,
-          parse_mode: "Markdown",
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -91,13 +106,11 @@ ${booking.customerNotes ? `📝 *Customer Notes*\n${booking.customerNotes}\n` : 
       }
     }
 
-    // If there's an ID photo, send it
     if (booking.idPhoto && appUrl) {
       const idPhotoUrl = `${appUrl}/uploads/${booking.idPhoto}`;
       await sendPhoto(idPhotoUrl, `ID Card/Passport for ${booking.fullName}`);
     }
 
-    // If there's a payment slip, send it as a photo
     if (booking.paymentSlip && appUrl) {
       const photoUrl = `${appUrl}/uploads/${booking.paymentSlip}`;
       await sendPhoto(photoUrl, `Payment slip for ${booking.fullName}`);
@@ -165,7 +178,99 @@ export async function sendMessageToChat(chatId: string, message: string): Promis
   }
 }
 
+async function answerCallbackQuery(callbackQueryId: string, text: string): Promise<boolean> {
+  if (!TELEGRAM_BOT_TOKEN) return false;
+
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text: text,
+        show_alert: true,
+      }),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error("Failed to answer callback query:", error);
+    return false;
+  }
+}
+
+async function editMessageReplyMarkup(chatId: string, messageId: number, newText?: string): Promise<boolean> {
+  if (!TELEGRAM_BOT_TOKEN) return false;
+
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        reply_markup: { inline_keyboard: [] },
+      }),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error("Failed to edit message:", error);
+    return false;
+  }
+}
+
 export async function handleTelegramWebhook(update: any): Promise<void> {
+  if (update.callback_query) {
+    const callbackQuery = update.callback_query;
+    const data = callbackQuery.data;
+    const chatId = callbackQuery.message.chat.id.toString();
+    const messageId = callbackQuery.message.message_id;
+
+    if (data.startsWith("approve_")) {
+      const bookingId = data.replace("approve_", "");
+      
+      try {
+        const booking = await storage.getBooking(bookingId);
+        if (booking) {
+          await storage.updateBookingStatus(bookingId, "Confirmed");
+          await answerCallbackQuery(callbackQuery.id, `✅ Booking for ${booking.fullName} has been approved!`);
+          await editMessageReplyMarkup(chatId, messageId);
+          
+          const confirmMessage = `✅ *BOOKING APPROVED*\n\nGuest: ${booking.fullName}\nRooms: ${booking.roomNumbers || booking.roomNumber}\nCheck-in: ${booking.checkInDate}\nCheck-out: ${booking.checkOutDate}\n\nApproved via Telegram`;
+          await sendMessageToChat(chatId, confirmMessage);
+        } else {
+          await answerCallbackQuery(callbackQuery.id, "❌ Booking not found");
+        }
+      } catch (error) {
+        console.error("Error approving booking:", error);
+        await answerCallbackQuery(callbackQuery.id, "❌ Error approving booking");
+      }
+    } else if (data.startsWith("reject_")) {
+      const bookingId = data.replace("reject_", "");
+      
+      try {
+        const booking = await storage.getBooking(bookingId);
+        if (booking) {
+          await answerCallbackQuery(callbackQuery.id, `❌ Booking for ${booking.fullName} has been rejected`);
+          await editMessageReplyMarkup(chatId, messageId);
+          
+          const rejectMessage = `❌ *BOOKING REJECTED*\n\nGuest: ${booking.fullName}\nRooms: ${booking.roomNumbers || booking.roomNumber}\n\nRejected via Telegram`;
+          await sendMessageToChat(chatId, rejectMessage);
+        } else {
+          await answerCallbackQuery(callbackQuery.id, "❌ Booking not found");
+        }
+      } catch (error) {
+        console.error("Error rejecting booking:", error);
+        await answerCallbackQuery(callbackQuery.id, "❌ Error processing request");
+      }
+    }
+    
+    return;
+  }
+
   if (!update.message?.text) return;
 
   const chatId = update.message.chat.id.toString();

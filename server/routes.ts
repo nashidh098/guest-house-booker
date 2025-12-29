@@ -494,6 +494,7 @@ export async function registerRoutes(
       // Send Telegram notification (don't await - let it run in background)
       const appUrl = `${req.protocol}://${req.get("host")}`;
       sendBookingNotification({
+        id: booking.id,
         fullName: booking.fullName,
         idNumber: booking.idNumber,
         phoneNumber: booking.phoneNumber,
