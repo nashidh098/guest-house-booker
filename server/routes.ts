@@ -89,7 +89,7 @@ export async function registerRoutes(
       return res.status(500).json({ message: "Admin credentials not configured" });
     }
 
-    if (username === adminUsername && password === adminPassword) {
+    if (username.toLowerCase() === adminUsername.toLowerCase() && password === adminPassword) {
       return res.json({ success: true, message: "Login successful" });
     }
 
