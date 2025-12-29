@@ -471,6 +471,8 @@ export async function registerRoutes(
         phoneNumber: booking.phoneNumber,
         customerNotes: booking.customerNotes,
         roomNumber: booking.roomNumber,
+        roomNumbers: booking.roomNumbers,
+        extraBeds: booking.extraBeds,
         checkInDate: booking.checkInDate,
         checkOutDate: booking.checkOutDate,
         totalNights: booking.totalNights,

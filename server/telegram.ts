@@ -10,6 +10,8 @@ interface BookingNotification {
   phoneNumber: string | null;
   customerNotes: string | null;
   roomNumber: number;
+  roomNumbers: string | null;
+  extraBeds: string | null;
   checkInDate: string;
   checkOutDate: string;
   totalNights: number;
@@ -39,6 +41,14 @@ export async function sendBookingNotification(booking: BookingNotification, appU
   }
 
   try {
+    const roomsDisplay = booking.roomNumbers 
+      ? booking.roomNumbers.split(',').map(r => `Room ${r.trim()}`).join(', ')
+      : `Room ${booking.roomNumber}`;
+    
+    const extraBedsDisplay = booking.extraBeds 
+      ? `Extra Beds: Room${booking.extraBeds.includes(',') ? 's' : ''} ${booking.extraBeds}`
+      : "Extra Beds: None";
+
     const message = `
 🏨 *NEW BOOKING RECEIVED*
 
@@ -48,7 +58,8 @@ ID/Passport: ${booking.idNumber}
 Phone: ${booking.phoneNumber || "Not provided"}
 
 🛏️ *Room Information*
-Room Number: ${booking.roomNumber}
+Rooms: ${roomsDisplay}
+${extraBedsDisplay}
 Check-in: ${booking.checkInDate}
 Check-out: ${booking.checkOutDate}
 Nights: ${booking.totalNights}
