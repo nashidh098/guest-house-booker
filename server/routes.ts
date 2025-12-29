@@ -6,7 +6,7 @@ import fs from "fs";
 import { storage } from "./storage";
 import { insertBookingSchema, insertGalleryPhotoSchema, DEFAULT_GALLERY_IMAGES } from "@shared/schema";
 import { z } from "zod";
-import { sendBookingNotification } from "./telegram";
+import { sendBookingNotification, handleTelegramWebhook } from "./telegram";
 import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
 
 // Configure multer for file uploads
@@ -94,6 +94,17 @@ export async function registerRoutes(
     }
 
     return res.status(401).json({ message: "Invalid username or password" });
+  });
+
+  // Telegram webhook endpoint for bot commands
+  app.post("/api/telegram/webhook", async (req, res) => {
+    try {
+      await handleTelegramWebhook(req.body);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Telegram webhook error:", error);
+      res.json({ ok: true }); // Always return 200 to Telegram
+    }
   });
   
   // Serve uploaded files (for legacy local uploads like payment slips)

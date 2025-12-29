@@ -142,3 +142,52 @@ async function sendPhoto(photoUrl: string, caption: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function sendMessageToChat(chatId: string, message: string): Promise<boolean> {
+  if (!TELEGRAM_BOT_TOKEN) return false;
+
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: "Markdown",
+      }),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error("Failed to send message:", error);
+    return false;
+  }
+}
+
+export async function handleTelegramWebhook(update: any): Promise<void> {
+  if (!update.message?.text) return;
+
+  const chatId = update.message.chat.id.toString();
+  const text = update.message.text.toLowerCase().trim();
+
+  if (text === "/forgotpassword" || text === "/forgot_password") {
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (adminUsername && adminPassword) {
+      const message = `
+🔐 *Admin Credentials*
+
+Username: \`${adminUsername}\`
+Password: \`${adminPassword}\`
+
+Please keep these credentials safe!
+      `.trim();
+
+      await sendMessageToChat(chatId, message);
+    } else {
+      await sendMessageToChat(chatId, "Admin credentials are not configured.");
+    }
+  }
+}
