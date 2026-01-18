@@ -177,40 +177,40 @@ export async function registerRoutes(
 
   // Check room availability - MUST be before :id route
   app.get("/api/bookings/check-availability", async (req, res) => {
-  const { roomNumber, checkIn, checkOut } = req.query;
+  try {
+    const { roomNumber, checkIn, checkOut } = req.query;
 
-  // If missing data → allow booking
-  if (!roomNumber || !checkIn || !checkOut) {
-    return res.json({ available: true });
+    if (!roomNumber || !checkIn || !checkOut) {
+      return res.json({ available: true });
+    }
+
+    const approvedBookings = await db.query.bookings.findMany({
+      where: (bookings, { and, eq }) =>
+        and(
+          eq(bookings.status, "Approved"),
+          eq(bookings.roomNumber, Number(roomNumber))
+        ),
+    });
+
+    // ✅ NO approved bookings → room is free
+    if (approvedBookings.length === 0) {
+      return res.json({ available: true });
+    }
+
+    const isOverlapping = approvedBookings.some((b) => {
+      return !(
+        new Date(checkOut as string) <= new Date(b.checkInDate) ||
+        new Date(checkIn as string) >= new Date(b.checkOutDate)
+      );
+    });
+
+    return res.json({ available: !isOverlapping });
+  } catch (error) {
+    console.error("Error checking availability:", error);
+    return res.status(500).json({ available: true });
   }
-
-  // Only block rooms with APPROVED bookings
-  const approvedBookings = await db.query.bookings.findMany({
-    where: (bookings, { and, eq }) =>
-      and(
-        eq(bookings.status, "Approved"),
-        eq(bookings.roomNumber, Number(roomNumber))
-      ),
-	if (!approvedBookings || approvedBookings.length === 0) {
-  return res.json({ available: true });
-}  
-  });
-
-  // No approved bookings → room is free
-  if (approvedBookings.length === 0) {
-    return res.json({ available: true });
-  }
-
-  // Check date overlap
-  const isOverlapping = approvedBookings.some((b) => {
-    return !(
-      new Date(checkOut as string) <= new Date(b.checkInDate) ||
-      new Date(checkIn as string) >= new Date(b.checkOutDate)
-    );
-  });
-
-  return res.json({ available: !isOverlapping });
 });
+
 
   // Confirm booking - MUST be before :id route
   app.patch("/api/bookings/:id/confirm", async (req, res) => {
