@@ -69,7 +69,6 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
     throw err;
   });
-
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
@@ -84,15 +83,13 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "3000", 10);
+  const port = Number(process.env.PORT);
 
-httpServer.listen(
-  {
-    port,
-    host: "0.0.0.0",
-  },
-  () => {
-    console.log(`Server running on port ${port}`);
-  }
-);
+if (!port) {
+  throw new Error("PORT is not defined");
+}
+
+httpServer.listen(port, "0.0.0.0", () => {
+  console.log(`Server running on port ${port}`);
+});
 })();
