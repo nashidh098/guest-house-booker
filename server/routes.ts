@@ -180,37 +180,54 @@ export async function registerRoutes(
   try {
     const { roomNumber, checkIn, checkOut } = req.query;
 
+    console.log("🔍 Availability check:", {
+      roomNumber,
+      checkIn,
+      checkOut,
+    });
+
     if (!roomNumber || !checkIn || !checkOut) {
+      console.log("⚠️ Missing params → available");
       return res.json({ available: true });
     }
 
     const approvedBookings = await db.query.bookings.findMany({
       where: (bookings, { and, eq }) =>
         and(
-          eq(bookings.status, "Approved"),
-          eq(bookings.roomNumber, Number(roomNumber))
+          eq(bookings.roomNumber, Number(roomNumber)),
+          eq(bookings.status, "Approved")
         ),
     });
 
-    // ✅ NO approved bookings → room is free
-    if (approvedBookings.length === 0) {
+    console.log("📦 Approved bookings found:", approvedBookings);
+
+    // 🚨 THIS IS IMPORTANT
+    if (!approvedBookings || approvedBookings.length === 0) {
+      console.log("✅ No approved bookings → available");
       return res.json({ available: true });
     }
 
+    const requestedStart = new Date(String(checkIn));
+    const requestedEnd = new Date(String(checkOut));
+
     const isOverlapping = approvedBookings.some((b) => {
-      return !(
-        new Date(checkOut as string) <= new Date(b.checkInDate) ||
-        new Date(checkIn as string) >= new Date(b.checkOutDate)
-      );
+      const existingStart = new Date(b.checkInDate);
+      const existingEnd = new Date(b.checkOutDate);
+
+      return requestedStart < existingEnd &&
+             requestedEnd > existingStart;
     });
 
+    console.log("❌ Overlap result:", isOverlapping);
+
     return res.json({ available: !isOverlapping });
-  } catch (error) {
-    console.error("Error checking availability:", error);
-    return res.status(500).json({ available: true });
+  } catch (err) {
+    console.error("❌ Availability error:", err);
+
+    // IMPORTANT: fail OPEN, not closed
+    return res.json({ available: true });
   }
 });
-
 
   // Confirm booking - MUST be before :id route
   app.patch("/api/bookings/:id/confirm", async (req, res) => {
