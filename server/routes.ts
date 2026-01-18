@@ -177,25 +177,40 @@ export async function registerRoutes(
 
   // Check room availability - MUST be before :id route
   app.get("/api/bookings/check-availability", async (req, res) => {
-    try {
-      const { roomNumber, checkIn, checkOut } = req.query;
-      
-      if (!roomNumber || !checkIn || !checkOut) {
-        return res.status(400).json({ message: "Missing required parameters" });
-      }
+  const { roomNumber, checkIn, checkOut } = req.query;
 
-      const available = await storage.checkRoomAvailability(
-        parseInt(roomNumber as string, 10),
-        checkIn as string,
-        checkOut as string
-      );
+  // If missing data → allow booking
+  if (!roomNumber || !checkIn || !checkOut) {
+    return res.json({ available: true });
+  }
 
-      res.json({ available });
-    } catch (error) {
-      console.error("Error checking availability:", error);
-      res.status(500).json({ message: "Failed to check availability" });
-    }
+  // Only block rooms with APPROVED bookings
+  const approvedBookings = await db.query.bookings.findMany({
+    where: (bookings, { and, eq }) =>
+      and(
+        eq(bookings.status, "Approved"),
+        eq(bookings.roomNumber, Number(roomNumber))
+      ),
+	if (!approvedBookings || approvedBookings.length === 0) {
+  return res.json({ available: true });
+}  
   });
+
+  // No approved bookings → room is free
+  if (approvedBookings.length === 0) {
+    return res.json({ available: true });
+  }
+
+  // Check date overlap
+  const isOverlapping = approvedBookings.some((b) => {
+    return !(
+      new Date(checkOut as string) <= new Date(b.checkInDate) ||
+      new Date(checkIn as string) >= new Date(b.checkOutDate)
+    );
+  });
+
+  return res.json({ available: !isOverlapping });
+});
 
   // Confirm booking - MUST be before :id route
   app.patch("/api/bookings/:id/confirm", async (req, res) => {
@@ -256,15 +271,18 @@ export async function registerRoutes(
       }
 
       // Check availability for new dates (exclude current booking)
-      const available = await storage.checkRoomAvailability(
-        existingBooking.roomNumber,
-        checkInDate,
-        checkOutDate,
-        req.params.id
-      );
+      const existingBookings = await db.query.bookings.findMany({
+  where: and(
+    eq(bookings.roomNumber, room),
+    lt(bookings.checkInDate, checkOutDate),
+    gt(bookings.checkOutDate, checkInDate),
+  ),
+});
 
-      if (!available) {
-        return res.status(409).json({ message: "Room not available for selected dates" });
+      if (existingBookings.length > 0) {
+      return res.status(400).json({
+       message: "Not Available - Room already booked for selected dates",
+  });
       }
 
       const booking = await storage.updateBookingDates(
