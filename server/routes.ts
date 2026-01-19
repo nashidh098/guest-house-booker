@@ -229,48 +229,58 @@ export async function registerRoutes(
   }
 });
 
-  // Confirm booking - MUST be before :id route
-  app.patch("/api/bookings/:id/confirm", async (req, res) => {
-    try {
-      const booking = await storage.updateBookingStatus(req.params.id, "Confirmed");
-      if (!booking) {
-        return res.status(404).json({ message: "Booking not found" });
-      }
-      res.json(booking);
-    } catch (error) {
-      console.error("Error confirming booking:", error);
-      res.status(500).json({ message: "Failed to confirm booking" });
+// Confirm booking
+app.patch("/api/bookings/:id/confirm", async (req, res) => {
+  try {
+    const booking = await storage.updateBookingStatus(
+      req.params.id,
+      "approved"
+    );
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
     }
-  });
+    res.json(booking);
+  } catch (error) {
+    console.error("Error confirming booking:", error);
+    res.status(500).json({ message: "Failed to confirm booking" });
+  }
+});
 
-  // Reject booking - MUST be before :id route
-  app.patch("/api/bookings/:id/reject", async (req, res) => {
-    try {
-      const { adminNotes } = req.body || {};
-      const booking = await storage.updateBookingStatus(req.params.id, "Rejected", adminNotes);
-      if (!booking) {
-        return res.status(404).json({ message: "Booking not found" });
-      }
-      res.json(booking);
-    } catch (error) {
-      console.error("Error rejecting booking:", error);
-      res.status(500).json({ message: "Failed to reject booking" });
+// Reject booking
+app.patch("/api/bookings/:id/reject", async (req, res) => {
+  try {
+    const { adminNotes } = req.body || {};
+    const booking = await storage.updateBookingStatus(
+      req.params.id,
+      "rejected",
+      adminNotes
+    );
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
     }
-  });
+    res.json(booking);
+  } catch (error) {
+    console.error("Error rejecting booking:", error);
+    res.status(500).json({ message: "Failed to reject booking" });
+  }
+});
 
-  // Cancel booking - MUST be before :id route
-  app.patch("/api/bookings/:id/cancel", async (req, res) => {
-    try {
-      const booking = await storage.updateBookingStatus(req.params.id, "Cancelled");
-      if (!booking) {
-        return res.status(404).json({ message: "Booking not found" });
-      }
-      res.json(booking);
-    } catch (error) {
-      console.error("Error cancelling booking:", error);
-      res.status(500).json({ message: "Failed to cancel booking" });
+// Cancel booking
+app.patch("/api/bookings/:id/cancel", async (req, res) => {
+  try {
+    const booking = await storage.updateBookingStatus(
+      req.params.id,
+      "cancelled"
+    );
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
     }
-  });
+    res.json(booking);
+  } catch (error) {
+    console.error("Error cancelling booking:", error);
+    res.status(500).json({ message: "Failed to cancel booking" });
+  }
+});
 
   // Update booking dates - MUST be before :id route
   app.patch("/api/bookings/:id/dates", async (req, res) => {
@@ -282,17 +292,14 @@ export async function registerRoutes(
       }
 
       // Get current booking to check room number
-      const existingBooking = await storage.getBooking(req.params.id);
-      if (!existingBooking) {
-        return res.status(404).json({ message: "Booking not found" });
-      }
+      const room = existingBooking.roomNumber;
 
-      // Check availability for new dates (exclude current booking)
-      const existingBookings = await db.query.bookings.findMany({
+const existingBookings = await db.query.bookings.findMany({
   where: and(
     eq(bookings.roomNumber, room),
+    eq(bookings.status, "approved"),
     lt(bookings.checkInDate, checkOutDate),
-    gt(bookings.checkOutDate, checkInDate),
+    gt(bookings.checkOutDate, checkInDate)
   ),
 });
 
