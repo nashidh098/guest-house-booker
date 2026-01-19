@@ -195,7 +195,7 @@ export async function registerRoutes(
       where: (bookings, { and, eq }) =>
         and(
           eq(bookings.roomNumber, Number(roomNumber)),
-          eq(bookings.status, "Approved")
+          eq(bookings.status, "approved")
         ),
     });
 
