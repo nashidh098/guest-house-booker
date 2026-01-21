@@ -95,6 +95,14 @@ export const BANK_ACCOUNTS: BankAccount[] = [
 ];
 
 // Gallery photos schema
+import {
+  pgTable,
+  serial,
+  text,
+  integer,
+  date,
+  timestamp,
+} from "drizzle-orm/pg-core";
 export const galleryPhotos = pgTable("gallery_photos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   imageUrl: text("image_url").notNull(),

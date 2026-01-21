@@ -327,6 +327,22 @@ const existingBookings = await db.query.bookings.findMany({
       res.status(500).json({ message: "Failed to update booking dates" });
     }
   });
+  
+    app.get("/api/test-telegram", async (_req, res) => {
+  const ok = await sendBookingNotification(
+    {
+      fullName: "TEST USER",
+      roomNumber: 1,
+      checkInDate: "2026-01-20",
+      checkOutDate: "2026-01-22",
+      totalMVR: 1000,
+      totalUSD: "65",
+    } as any,
+    "https://example.com"
+  );
+
+  res.json({ ok });
+});
 
   // Delete booking - MUST be before :id route
   app.delete("/api/bookings/:id", async (req, res) => {

@@ -1,3 +1,7 @@
+console.log("📨 TELEGRAM DEBUG START");
+console.log("Token exists:", !!process.env.TELEGRAM_BOT_TOKEN);
+console.log("Chat IDs:", process.env.TELEGRAM_CHAT_IDS);
+console.log("📨 TELEGRAM DEBUG END");
 // Telegram notification service for booking alerts
 import { storage } from "./storage";
 
@@ -22,6 +26,14 @@ interface BookingNotification {
   idPhoto: string | null;
   paymentSlip: string | null;
 }
+await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    chat_id: chatId,
+    text: "✅ Test message from Railway",
+  }),
+});
 
 function getAllChatIds(): string[] {
   const chatIds: string[] = [];
