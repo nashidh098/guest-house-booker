@@ -13,13 +13,17 @@ declare module "http" {
   }
 }
 
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
+// 1️⃣ Register API routes FIRST
+await registerRoutes(httpServer, app);
+
+// 2️⃣ Serve frontend AFTER
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "dist", "public")));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "dist", "public", "index.html"));
+  });
+}
 
 app.use(express.urlencoded({ extended: false }));
 
