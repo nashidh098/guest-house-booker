@@ -13,20 +13,6 @@ declare module "http" {
   }
 }
 
-// 1️⃣ Register API routes FIRST
-await registerRoutes(httpServer, app);
-
-// 2️⃣ Serve frontend AFTER
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "dist", "public")));
-
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "dist", "public", "index.html"));
-  });
-}
-
-app.use(express.urlencoded({ extended: false }));
-
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -65,26 +51,28 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // 1️⃣ REGISTER API ROUTES FIRST (CRITICAL)
   await registerRoutes(httpServer, app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  // 2️⃣ ERROR HANDLER
+  app.use((err: any, _req: any, res: any, _next: any) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
     res.status(status).json({ message });
   });
 
-  // Setup frontend
+  // 3️⃣ FRONTEND — MUST BE LAST
   if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
+    serveStatic(app); // ⚠️ contains app.get("*")
   } else {
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
 
-  // 🚀 START SERVER (ONLY ONCE)
+  // 4️⃣ START SERVER
   const port = Number(process.env.PORT || 3000);
-
   httpServer.listen(port, "0.0.0.0", () => {
     console.log(`✅ Server running on port ${port}`);
   });
 })();
+
